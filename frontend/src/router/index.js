@@ -1,11 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { tokenStore } from '../api'
 import { useAuthStore } from '../stores/auth'
-import Desktop from '../desktop/Desktop.vue'
-
-// The desktop shell renders windows itself; child route components are only
-// used as metadata containers and are mounted by the window manager.
-const EmptyView = { name: 'EmptyView', render: () => null }
+import AdminLayout from '../layouts/AdminLayout.vue'
 
 const routes = [
   {
@@ -16,16 +12,10 @@ const routes = [
   },
   {
     path: '/',
-    component: Desktop,
+    component: AdminLayout,
     children: [
       {
         path: '',
-        name: 'desktop',
-        component: EmptyView,
-        meta: { title: 'desktop.title' }
-      },
-      {
-        path: 'dashboard',
         name: 'dashboard',
         component: () => import('../views/Dashboard.vue'),
         meta: { title: 'nav.dashboard' }

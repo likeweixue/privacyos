@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia'
 import i18n from '../locales'
 
-const THEME_KEY = 'pos_theme'
+const THEME_KEY = 'pos_theme_v2'
 const LANG_KEY = 'pos_lang'
 const SIDEBAR_KEY = 'pos_sidebar'
 
 export const useUiStore = defineStore('ui', {
   state: () => ({
-    theme: localStorage.getItem(THEME_KEY) || 'dark',
+    theme: localStorage.getItem(THEME_KEY) || 'light',
     lang: localStorage.getItem(LANG_KEY) || 'zh-CN',
     sidebarCollapsed: localStorage.getItem(SIDEBAR_KEY) === '1',
     inboxOpen: false

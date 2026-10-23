@@ -21,8 +21,8 @@ PrivacyOS 的目标不是"把一堆开源软件塞进 Debian"，而是提供一�
 └───────────────────────────┬────────────────────────────────┘
                             │
 ┌───────────────────────────▼────────────────────────────────┐
-│ 桌面壳（Vue 3）：任务栏 · 开始菜单 · 多窗口 · 桌面图标          │
-│ 12 个应用窗口：仪表盘/文件/相册/影视/Docker/用户/存储/网络/   │
+│ 管理界面（Vue 3）：固定顶栏 · 侧边导航 · 可搜索下拉 · Widget    │
+│ 12 个管理模块：仪表盘/文件/相册/影视/Docker/用户/存储/网络/   │
 │ 应用/监控/日志/设置 + 登录页 + 公开分享页                      │
 └───────────────────────────┬────────────────────────────────┘
                             │ REST /api/v1 · SSE /monitor/stream
@@ -61,7 +61,8 @@ PrivacyOS 的目标不是"把一堆开源软件塞进 Debian"，而是提供一�
 | `internal/system` | 主机信息/网络/更新/备份/防火墙 | 自签证书、nftables 回滚、DDNS、Linux 账号 |
 | `internal/thumb` | 缩略图 | 图片缩放、EXIF 方向、ffmpeg 视频抽帧、磁盘缓存 |
 | `internal/api` | 路由与处理器 | Gin 中间件、统一错误、SSE、WebDAV、SPA 回退 |
-| 前端 `src/desktop` | 桌面壳 | 窗口管理器（拖动/缩放/层级）、任务栏、开始菜单、应用注册表 |
+| 前端 `src/layouts` | 管理壳 | AdminLayout：固定顶栏、侧栏/Drawer、命令面板、会话菜单 |
+| 前端 `src/apps.js` | 应用注册表 | 分组导航、图标、功能开关状态、扩展列表 |
 
 ## 4. 认证与会话
 
@@ -203,7 +204,7 @@ ExecuteDestroy
 
 - **新增后端模块**：在 `internal/<module>` 实现服务 → 在 `api/server.go` 注册路由 →
   在 `frontend/src/api/index.js` 增加客户端方法。
-- **新增页面**：`frontend/src/views/*.vue` + 路由元数据 + `frontend/src/desktop/apps.js` 注册表。
+- **新增页面**：`frontend/src/views/*.vue` + 路由元数据 + `frontend/src/apps.js` 注册表。
 - **新增版控规则**：集中在 `core.App` 方法（`AdminSeeAll` / `FeatureAllowed`），
   不要在 handler 内散落 `if edition == ...`。
 - **新增通知渠道**：`core/notify.go` 增加 sendXxx，并扩展 `NotificationSettings`。

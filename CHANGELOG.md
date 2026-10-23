@@ -1,21 +1,29 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 — 2026-10-24
 
-### 新增
-
-- Windows 风格桌面环境：任务栏、开始菜单、桌面图标、多窗口
-- 窗口拖动、右下角缩放、最小化/最大化/关闭、焦点层级、双击标题栏最大化
-- 浅色/深色桌面主题、右键桌面菜单、显示桌面按钮
-- `scripts/start-demo.sh` / `stop-demo.sh`：后台运行完整演示服务
-- 桌面环境下 Files 页面自适应窗口高度；页面标题收进窗口标题栏
+管理界面重构：从 Windows 风格桌面壳切换为 Flarum 2.0 Admin 风格的平面后台 SPA。
 
 ### 变更
 
-- 移除侧边栏 + 顶栏布局，所有应用以窗口形式打开
-- 应用路由保留深链接，由桌面应用注册表挂载窗口组件
+- 移除桌面窗口、任务栏、开始菜单，改为固定顶栏 + 侧边导航 + 内容区
+- 区域配色：顶栏/侧边栏为白色，内容画布为浅灰，Widget 为白色线框卡片
+- 全局扁平化：去除大圆角、悬浮阴影与岛屿式卡片，统一 1–3px 圆角和 1px 边框
+- 默认浅色主题，保留深色主题切换
+- 页面标题收进标准 AdminHeader，文件管理与设置页改为连续区域布局
 
-## 1.0.0 — 2026-10
+### 新增
+
+- `App-header` 固定顶栏：返回、品牌、搜索、帮助、会话下拉
+- `App-nav` 固定侧边栏 + 移动端 Drawer
+- 可搜索的 `Dropdown--select` 导航（渐进式披露全部模块）
+- 命令面板（⌘/Ctrl+K），键盘上下选择、回车打开
+- Dashboard Widget 流：StatusWidget / StatisticsWidget / AnnouncementsWidget / ExtensionsWidget
+- 状态点、工具下拉（清除缓存/系统信息/高级设置）、公告与扩展列表
+- a11y：skip link、aria-label、aria-current、role=search/listbox/menu
+- `scripts/start-demo.sh` / `stop-demo.sh`：后台运行完整演示服务
+
+## 1.0.0 — 2026-10-24
 
 首个完整版本。
 
@@ -35,6 +43,7 @@
 - 设置：更新、HTTPS、通知、备份恢复、安全策略
 - 专业版：LUKS 全盘加密安装、每用户加密卷、销毁策略、30 天冷静期
 - Vue 3 + Element Plus 前端，深色/浅色主题，中英文界面
+- Windows 风格桌面壳：任务栏、开始菜单、多窗口（1.1.0 中替换为后台 SPA）
 - 单元测试、CI、Docker 开发环境、完整文档
 
 ### 已知问题

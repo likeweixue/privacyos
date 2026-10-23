@@ -5,7 +5,7 @@
 # ============================================================================
 set -u
 INSTALL_DIR="/opt/privacyos"
-VERSION="$(cat "${INSTALL_DIR}/version" 2>/dev/null || echo "1.0.0")"
+VERSION="$(cat "${INSTALL_DIR}/version" 2>/dev/null || echo "1.1.0")"
 EDITION="$(cat "${INSTALL_DIR}/edition" 2>/dev/null || echo "normal")"
 
 if [ "${EDITION}" = "pro" ]; then

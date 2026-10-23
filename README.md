@@ -4,27 +4,27 @@
 
 PrivacyOS 不是"又一个网盘界面"，而是一套**可安装的操作系统 + 管理面板**：安装器基于 Debian Installer（preseed），面板后端是静态编译的 Go 服务，前端是 Vue 3 + Element Plus。普通版强调易用与共享，专业版强调**用户间强制隔离**与**数据销毁**。
 
-![PrivacyOS 桌面](docs/images/desktop.png)
+![PrivacyOS 管理界面](docs/images/admin-dashboard.png)
 
-**Windows 风格桌面**：底部任务栏显示所有打开的窗口，图标双击打开应用，
-窗口支持拖动、右下角缩放、最小化 / 最大化 / 关闭；开始菜单集中启动应用，
-右键桌面可刷新、打开设置或查看关于信息。
+**Flarum 2.0 Admin 风格**：固定顶栏 + 白色侧边导航 + 浅灰内容画布 + 扁平 Widget 卡片。
+区域之间用颜色和 1px 边框区分，不使用悬浮阴影或大圆角岛屿。导航按「核心设置 / 功能 / 系统」
+分组，侧栏顶部的「跳转到…」可搜索全部模块；`⌘/Ctrl + K` 打开命令面板。
 
-| 开始菜单 | 浅色主题 |
+| 可搜索导航下拉 | 命令面板 |
 | --- | --- |
-| ![开始菜单](docs/images/start-menu.png) | ![浅色桌面](docs/images/desktop-light.png) |
+| ![导航](docs/images/admin-nav.png) | ![搜索](docs/images/admin-search.png) |
 
-| 文件管理窗口 | 系统设置窗口 |
+| 系统设置（侧栏白色 / 功能区灰色） | 深色主题 |
 | --- | --- |
-| ![文件](docs/images/files.png) | ![设置](docs/images/settings.png) |
+| ![设置](docs/images/admin-settings.png) | ![深色](docs/images/admin-dark.png) |
 
-| 相册（演示数据） | 影视中心（演示数据） |
+| 文件管理 | 相册（演示数据） |
 | --- | --- |
-| ![相册](docs/images/photos.png) | ![影视](docs/images/movies.png) |
+| ![文件](docs/images/files.png) | ![相册](docs/images/photos.png) |
 
-多窗口与任务栏：
-
-![多窗口](docs/images/desktop-multi.png)
+| 影视中心（演示数据） | 移动端布局 |
+| --- | --- |
+| ![影视](docs/images/movies.png) | ![移动端](docs/images/admin-mobile.png) |
 
 登录页：
 
@@ -34,7 +34,7 @@ PrivacyOS 不是"又一个网盘界面"，而是一套**可安装的操作系统
 
 | 模块 | 能力 |
 | --- | --- |
-| 桌面环境 | 任务栏、开始菜单、多窗口、拖动/缩放/最大化、桌面图标、右键菜单、深浅主题 |
+| 管理界面 | 固定顶栏、侧边导航、可搜索下拉、命令面板、Widget 仪表盘、浅色/深色主题、移动端抽屉 |
 | 文件管理 | 目录树、上传/下载、新建/重命名/移动/复制、压缩/解压、回收站、配额、分享链接、WebDAV |
 | 相册 | EXIF 自动归档 `年/月/日`、时间轴、缩略图、GPS 坐标视图、相册分类、批量操作、分享 |
 | 影视中心 | 媒体库扫描、ffprobe 元数据、TMDB 刮削、海报墙、详情、Range 流式播放、外挂字幕、倍速 |
@@ -94,11 +94,11 @@ PrivacyOS 不是"又一个网盘界面"，而是一套**可安装的操作系统
 # 方式一：前后端热更新开发
 make dev
 
-# 方式二：后台运行完整桌面（单端口，适合直接体验）
+# 方式二：后台运行完整管理界面（单端口，适合直接体验）
 make demo
 ```
 
-- 桌面：<http://127.0.0.1:8080>（`make demo`）或 <http://127.0.0.1:5173>（`make dev`）
+- 管理界面：<http://127.0.0.1:8080>（`make demo`）或 <http://127.0.0.1:5173>（`make dev`）
 - API：<http://127.0.0.1:8080/api/v1>
 - 后台停止：`make demo-stop`，日志在 `runtime/privacyos.log`
 - 管理员：`padmin / privacyos`
@@ -139,8 +139,8 @@ make verify
 产物：
 
 ```
-build/privacyos-1.0.0-amd64.iso
-build/privacyos-1.0.0-amd64.iso.sha256
+build/privacyos-1.1.0-amd64.iso
+build/privacyos-1.1.0-amd64.iso.sha256
 build/payload/                     # 安装载荷
 build/LUKS-PASSPHRASE.txt          # 专业版安装时的 LUKS 口令（务必保存）
 build/initial-admin-password       # 首次安装的管理员密码

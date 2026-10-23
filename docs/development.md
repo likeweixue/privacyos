@@ -70,7 +70,8 @@ backend/
 frontend/
 ├── src/api/index.js                 所有 REST 客户端 + token 刷新
 ├── src/stores/{auth,ui}.js          Pinia
-├── src/desktop/                    桌面壳：Desktop / WindowFrame / Taskbar / StartMenu / apps.js
+├── src/layouts/AdminLayout.vue     管理壳：固定顶栏 / 侧栏 / Drawer / 搜索 / 会话
+├── src/apps.js                     导航与扩展注册表（分组、图标、功能开关）
 ├── src/views/*.vue                  12 个应用页面 + 登录 + 公开分享 + 404
 ├── src/components/                  PageHeader/StatCard/EChart/...
 ├── src/locales/{zh-CN,en-US}.js     词条（运行 scripts/check-i18n.mjs 校验）
@@ -150,7 +151,6 @@ cd frontend && node scripts/check-i18n.mjs
 ### 状态管理
 
 - `auth`：当前用户、版控、功能权限；登录后调用 `/auth/me`。
-- `desktop`：打开的窗口、焦点、层级、最小化/最大化、开始菜单。
 - `ui`：主题、语言（localStorage 持久化）。
 - 页面内部状态使用 `ref/reactive`，不引入额外全局 store。
 
@@ -180,8 +180,8 @@ make check         # go vet + test + i18n + shell 语法
 - 后端日志：`tail -f /tmp/privacyos-server.log`（`make dev` 输出到终端）。
 - 数据库：`sqlite3 dev-data/etc/privacyos.db '.tables'`。
 - 前端：Vite HMR；网络面板查看 `/api` 请求；SSE 在 `monitor` 页。
-桌面壳路由：`/` 为空桌面，`/dashboard`、`/files` 等为深链接；父路由 `Desktop`
-不使用 `<router-view>`，由 `src/desktop/apps.js` 注册表按窗口挂载页面组件。
+后台路由：`/` 为仪表盘，`/files`、`/settings` 等为深链接；父路由 `AdminLayout`
+使用 `<router-view>` 渲染页面，`src/apps.js` 只负责导航与扩展元数据。
 - 无头浏览器冒烟（本项目开发时使用）：Chrome CDP 登录后逐页截图，检查
   `.el-message--error` 与控制台异常。
 - 重置数据：`rm -rf dev-data`，重启后重新种子。

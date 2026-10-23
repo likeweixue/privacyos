@@ -861,19 +861,26 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.files-page { height: 100%; min-height: 0; }
+.files-page { height: calc(100dvh - 106px); min-height: 520px; }
 .files-layout {
   flex: 1;
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
-  gap: 16px;
+  gap: 0;
   min-height: 0;
+  border: 1px solid var(--pos-border);
+  background: var(--pos-panel);
 }
 .tree-panel {
   padding: 16px 12px;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  background: var(--pos-nav);
+  border: none;
+  border-right: 1px solid var(--pos-border);
+  border-radius: 0;
+  box-shadow: none;
 }
 .tree-head {
   display: flex;
@@ -918,8 +925,10 @@ onBeforeUnmount(() => {
 .tree-action .el-tag { margin-left: auto; }
 .table-area {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   display: flex;
+  overflow: hidden;
 }
 .table-area :deep(.el-table) {
   flex: 1;
@@ -927,6 +936,11 @@ onBeforeUnmount(() => {
 }
 .content-panel {
   padding: 14px 16px;
+  min-width: 0;
+  background: var(--pos-panel);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -1098,9 +1112,9 @@ onBeforeUnmount(() => {
 
 @media (max-width: 960px) {
   .files-page { height: auto; }
-  .files-layout { grid-template-columns: 1fr; }
+  .files-layout { grid-template-columns: minmax(0, 1fr); }
   .tree-panel { display: none; }
-  .content-panel { min-height: 70vh; }
+  .content-panel { min-height: 70vh; min-width: 0; overflow: hidden; }
   .search { width: 150px; }
 }
 </style>

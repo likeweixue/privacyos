@@ -20,26 +20,30 @@ defineProps({
 <style scoped>
 .page-header {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 14px;
   flex-wrap: wrap;
+  padding-bottom: 2px;
 }
 h1 {
   margin: 0;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 650;
-  letter-spacing: 0.3px;
+  letter-spacing: 0;
+  line-height: 1.3;
 }
 p {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   color: var(--pos-muted);
-  font-size: 13px;
+  font-size: 12.5px;
+  line-height: 1.5;
 }
 .actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
+  padding-top: 2px;
 }
 </style>

@@ -35,7 +35,7 @@ Dockerfile.builder   ISO 打包容器
 ./scripts/build-iso.sh --source /path/debian-13.7.0-amd64-DVD-1.iso
 
 # 校验
-./scripts/verify-iso.sh ../build/privacyos-1.0.0-amd64.iso
+./scripts/verify-iso.sh ../build/privacyos-1.1.0-amd64.iso
 ```
 
 完整说明见 [docs/installation.md](../docs/installation.md)。

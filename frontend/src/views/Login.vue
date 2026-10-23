@@ -93,7 +93,7 @@
         </div>
 
         <footer class="login-foot">
-          <span>v{{ info.version || '1.0.0' }}</span>
+          <span>v{{ info.version || '1.1.0' }}</span>
           <span class="dot">·</span>
           <a :href="info.website || '#'" target="_blank" rel="noreferrer">{{ info.website || 'privacyos' }}</a>
           <span class="spacer" />
@@ -120,7 +120,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const ui = useUiStore()
 
-const info = ref({ name: 'PrivacyOS', version: '1.0.0', edition: 'normal', website: 'privacyos.local', dev: false })
+const info = ref({ name: 'PrivacyOS', version: '1.1.0', edition: 'normal', website: 'privacyos.local', dev: false })
 const form = ref({ username: '', password: '', totp: '' })
 const needTotp = ref(false)
 const retryAfter = ref(0)
@@ -223,6 +223,7 @@ async function submit() {
   margin: 0;
   font-size: 32px;
   letter-spacing: 1px;
+  color: #eef7fb;
 }
 .brand p {
   margin: 6px 0 0;
