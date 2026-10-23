@@ -1,9 +1,18 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { tokenStore } from '../api'
 import { useAuthStore } from '../stores/auth'
-import AdminLayout from '../layouts/AdminLayout.vue'
+import Desktop from '../desktop/Desktop.vue'
+
+// App views are mounted inside desktop windows by the registry in src/apps.js.
+const AppStub = { name: 'AppStub', render: () => null }
 
 const routes = [
+  {
+    path: '/install',
+    name: 'install',
+    component: () => import('../views/Install.vue'),
+    meta: { public: true, title: 'installer.title' }
+  },
   {
     path: '/login',
     name: 'login',
@@ -12,78 +21,84 @@ const routes = [
   },
   {
     path: '/',
-    component: AdminLayout,
+    component: Desktop,
     children: [
       {
         path: '',
+        name: 'desktop',
+        component: AppStub,
+        meta: { title: 'desktop.title' }
+      },
+      {
+        path: 'dashboard',
         name: 'dashboard',
-        component: () => import('../views/Dashboard.vue'),
+        component: AppStub,
         meta: { title: 'nav.dashboard' }
       },
       {
         path: 'files',
         name: 'files',
-        component: () => import('../views/Files.vue'),
+        component: AppStub,
         meta: { title: 'nav.files', feature: 'files' }
       },
       {
         path: 'photos',
         name: 'photos',
-        component: () => import('../views/Photos.vue'),
+        component: AppStub,
         meta: { title: 'nav.photos', feature: 'photos' }
       },
       {
         path: 'movies',
         name: 'movies',
-        component: () => import('../views/Movies.vue'),
+        component: AppStub,
         meta: { title: 'nav.movies', feature: 'movies' }
       },
       {
         path: 'docker',
         name: 'docker',
-        component: () => import('../views/Docker.vue'),
+        component: AppStub,
         meta: { title: 'nav.docker', feature: 'docker' }
       },
       {
         path: 'users',
         name: 'users',
-        component: () => import('../views/Users.vue'),
+        component: AppStub,
         meta: { title: 'nav.users', admin: true }
       },
       {
         path: 'storage',
         name: 'storage',
-        component: () => import('../views/Storage.vue'),
+        component: AppStub,
         meta: { title: 'nav.storage', admin: true }
       },
       {
         path: 'network',
         name: 'network',
-        component: () => import('../views/Network.vue'),
+        component: AppStub,
         meta: { title: 'nav.network', admin: true }
       },
       {
         path: 'apps',
         name: 'apps',
-        component: () => import('../views/Apps.vue'),
+        component: AppStub,
         meta: { title: 'nav.apps', admin: true }
       },
       {
         path: 'monitor',
         name: 'monitor',
-        component: () => import('../views/Monitor.vue'),
+        component: AppStub,
         meta: { title: 'nav.monitor' }
       },
       {
         path: 'logs',
         name: 'logs',
-        component: () => import('../views/Logs.vue'),
+        component: AppStub,
         meta: { title: 'nav.logs', admin: true }
       },
       {
         path: 'settings',
         name: 'settings',
-        component: () => import('../views/Settings.vue'),
+        component: AppStub,
         meta: { title: 'nav.settings', admin: true }
       }
     ]

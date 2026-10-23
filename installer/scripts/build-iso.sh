@@ -28,6 +28,8 @@ TREE_DIR="${WORK_DIR}/iso"
 EDITION="both"
 DO_MD5=1
 KEEP_WORK=0
+NETINST="${PRIVACYOS_NETINST:-0}"
+MIN_ISO_SIZE="${PRIVACYOS_MIN_ISO_BYTES:-1000000000}"
 
 log()  { printf '\033[1;36m[iso]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[iso]\033[0m %s\n' "$*" >&2; }
@@ -84,6 +86,7 @@ log "源 ISO : ${SOURCE_ISO} ($(numfmt --to=iec "${SOURCE_SIZE}" 2>/dev/null || 
 log "载荷   : ${PAYLOAD_DIR}"
 log "工作目录: ${WORK_DIR}"
 log "输出   : ${OUTPUT_ISO}"
+[ "${NETINST}" = "1" ] && log "模式   : netinst（安装时使用在线 Debian 镜像）"
 
 mkdir -p "${WORK_DIR}" "$(dirname "${OUTPUT_ISO}")"
 
@@ -138,6 +141,11 @@ for ed in normal pro; do
     echo "" >> "${merged}"
     cat "${ROOT}/installer/preseed/${ed}.cfg" >> "${merged}"
     sed -i "s|__ADMIN_PASSWORD__|${ADMIN_PASSWORD}|g; s|__LUKS_PASSPHRASE__|${LUKS_PASSPHRASE}|g" "${merged}"
+    if [ "${NETINST}" = "1" ]; then
+        # A netinst image has no binary package pool: install from the online
+        # Debian mirror instead of relying on the CD-ROM.
+        sed -i 's|apt-setup/use_mirror boolean false|apt-setup/use_mirror boolean true|; s|apt-setup/cdrom/set-first boolean true|apt-setup/cdrom/set-first boolean false|' "${merged}"
+    fi
     if grep -q '__[A-Z_]*__' "${merged}"; then
         die "preseed/${ed}.cfg 仍包含未替换的占位符"
     fi
@@ -218,7 +226,7 @@ xorriso -indev "${OUTPUT_ISO}" -report_el_torito plain 2>/dev/null | sed 's/^/  
 
 OUT_SIZE="$(stat -c%s "${OUTPUT_ISO}")"
 log "输出大小: $(numfmt --to=iec "${OUT_SIZE}" 2>/dev/null || echo "${OUT_SIZE} bytes")"
-[ "${OUT_SIZE}" -gt 1000000000 ] || die "输出 ISO 异常偏小，构建可能失败"
+[ "${OUT_SIZE}" -gt "${MIN_ISO_SIZE}" ] || die "输出 ISO 异常偏小，构建可能失败"
 
 (
     cd "$(dirname "${OUTPUT_ISO}")"

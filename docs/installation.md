@@ -72,7 +72,7 @@ build/payload/
 ```bash
 ./installer/scripts/build-iso.sh \
   --source "../开发文档/debian-13.7.0-amd64-DVD-1.iso" \
-  --output "build/privacyos-1.1.0-amd64.iso"
+  --output "build/privacyos-1.2.0-amd64.iso"
 ```
 
 脚本流程：
@@ -106,10 +106,31 @@ build/payload/
 产物：
 
 ```text
-build/privacyos-1.1.0-amd64.iso
-build/privacyos-1.1.0-amd64.iso.sha256
+build/privacyos-1.2.0-amd64.iso
+build/privacyos-1.2.0-amd64.iso.sha256
 build/LUKS-PASSPHRASE.txt      # 0600
 ```
+
+### 测试用 netinst ISO（GitHub Actions）
+
+推送 `v*` tag 时，`.github/workflows/iso-release.yml` 会自动：
+
+1. 下载 Debian 13.7 **netinst**（约 792MB）；
+2. 构建 PrivacyOS 载荷与 BIOS+UEFI 混合 ISO；
+3. 校验引导记录、preseed 占位符和载荷；
+4. 把 ISO 与 `.sha256` 发布到 GitHub Releases。
+
+测试 ISO 不内嵌软件包池，**虚拟机需要联网**，安装器会从 `deb.debian.org` 下载 Samba/NFS/Docker 等组件。
+发布页：<https://github.com/likeweixue/privacyos/releases>。
+
+测试 ISO 使用固定的临时凭据（每次发布以 Release 说明为准），仅用于虚拟机评估，**不要用于生产**。
+
+### 浏览器安装引导（预览）
+
+开发模式下可以访问 <http://127.0.0.1:8080/install> 体验 Flarum 风格的安装向导：
+选择版本、磁盘、管理员、网络与确认，模拟安装进度，并可下载生成的 `preseed.cfg`。
+
+该页面是安装流程预览，不会修改本机磁盘；真实安装仍由 ISO 内的 Debian Installer + preseed 完成。
 
 ## 4. 在 Docker 中构建（macOS / Windows）
 
@@ -120,7 +141,7 @@ build/LUKS-PASSPHRASE.txt      # 0600
 # 2) 使用 Debian 13 容器重新打包
 ./installer/scripts/build-in-docker.sh \
   --source "/path/to/debian-13.7.0-amd64-DVD-1.iso" \
-  --output "$PWD/build/privacyos-1.1.0-amd64.iso"
+  --output "$PWD/build/privacyos-1.2.0-amd64.iso"
 ```
 
 容器镜像 `installer/Dockerfile.builder` 只包含 `xorriso`/`isolinux` 等打包工具，
@@ -129,7 +150,7 @@ build/LUKS-PASSPHRASE.txt      # 0600
 ## 5. 校验 ISO
 
 ```bash
-./installer/scripts/verify-iso.sh build/privacyos-1.1.0-amd64.iso
+./installer/scripts/verify-iso.sh build/privacyos-1.2.0-amd64.iso
 ```
 
 检查项：
@@ -145,7 +166,7 @@ build/LUKS-PASSPHRASE.txt      # 0600
 
 ```bash
 # Linux / macOS（确认盘符后执行！）
-sudo dd if=build/privacyos-1.1.0-amd64.iso of=/dev/rdiskX bs=4m status=progress && sync
+sudo dd if=build/privacyos-1.2.0-amd64.iso of=/dev/rdiskX bs=4m status=progress && sync
 ```
 
 Windows 可使用 Rufus（DD 模式）或 balenaEtcher。

@@ -114,7 +114,7 @@ const ui = useUiStore()
 
 const token = String(route.params.token || '')
 const share = ref(null)
-const brand = ref({ name: 'PrivacyOS', version: '1.1.0', website: 'privacyos.local' })
+const brand = ref({ name: 'PrivacyOS', version: '1.2.0', website: 'privacyos.local' })
 const loading = ref(true)
 const errorState = ref('')
 const authorized = ref(false)
@@ -204,7 +204,7 @@ async function loadBrand() {
     const info = await api.public.info()
     brand.value = {
       name: info.name || 'PrivacyOS',
-      version: info.version || '1.1.0',
+      version: info.version || '1.2.0',
       website: info.website || 'privacyos.local'
     }
   } catch (error) {

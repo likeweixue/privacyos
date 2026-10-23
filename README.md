@@ -4,27 +4,33 @@
 
 PrivacyOS 不是"又一个网盘界面"，而是一套**可安装的操作系统 + 管理面板**：安装器基于 Debian Installer（preseed），面板后端是静态编译的 Go 服务，前端是 Vue 3 + Element Plus。普通版强调易用与共享，专业版强调**用户间强制隔离**与**数据销毁**。
 
-![PrivacyOS 管理界面](docs/images/admin-dashboard.png)
+![PrivacyOS 桌面](docs/images/desktop-dashboard.png)
 
-**Flarum 2.0 Admin 风格**：固定顶栏 + 白色侧边导航 + 浅灰内容画布 + 扁平 Widget 卡片。
-区域之间用颜色和 1px 边框区分，不使用悬浮阴影或大圆角岛屿。导航按「核心设置 / 功能 / 系统」
-分组，侧栏顶部的「跳转到…」可搜索全部模块；`⌘/Ctrl + K` 打开命令面板。
+**Windows 风格桌面 + Flarum 2.0 扁平设计**：底部任务栏、开始菜单、桌面图标与多窗口。
+窗口、面板、表格和按钮延续 Flarum 的扁平语言——白色表面、浅灰内容区、1px 边框、小圆角，
+不使用悬浮阴影式岛屿布局。**同一个应用可以同时开多个窗口**（例如两个文件管理分别对照目录）。
 
-| 可搜索导航下拉 | 命令面板 |
+| 多实例文件管理 | 开始菜单 |
 | --- | --- |
-| ![导航](docs/images/admin-nav.png) | ![搜索](docs/images/admin-search.png) |
+| ![多窗口文件管理](docs/images/desktop-files.png) | ![开始菜单](docs/images/desktop-start.png) |
 
-| 系统设置（侧栏白色 / 功能区灰色） | 深色主题 |
+| 系统设置窗口 | 深色桌面 |
 | --- | --- |
-| ![设置](docs/images/admin-settings.png) | ![深色](docs/images/admin-dark.png) |
+| ![设置](docs/images/desktop-settings.png) | ![深色](docs/images/desktop-dark.png) |
 
-| 文件管理 | 相册（演示数据） |
+| 文件管理（演示用户） | 相册（演示数据） |
 | --- | --- |
 | ![文件](docs/images/files.png) | ![相册](docs/images/photos.png) |
 
-| 影视中心（演示数据） | 移动端布局 |
+| 影视中心（演示数据） | 移动端桌面 |
 | --- | --- |
-| ![影视](docs/images/movies.png) | ![移动端](docs/images/admin-mobile.png) |
+| ![影视](docs/images/movies.png) | ![移动端](docs/images/desktop-mobile.png) |
+
+安装引导（Flarum 风格，访问 `/install` 体验）：
+
+| 安装欢迎页 | 安装完成 |
+| --- | --- |
+| ![安装引导](docs/images/installer-welcome.png) | ![安装完成](docs/images/installer-done.png) |
 
 登录页：
 
@@ -34,7 +40,7 @@ PrivacyOS 不是"又一个网盘界面"，而是一套**可安装的操作系统
 
 | 模块 | 能力 |
 | --- | --- |
-| 管理界面 | 固定顶栏、侧边导航、可搜索下拉、命令面板、Widget 仪表盘、浅色/深色主题、移动端抽屉 |
+| 桌面环境 | 任务栏、开始菜单、桌面图标、多窗口/多实例、拖动缩放、最大化、浅/深主题、移动端 |
 | 文件管理 | 目录树、上传/下载、新建/重命名/移动/复制、压缩/解压、回收站、配额、分享链接、WebDAV |
 | 相册 | EXIF 自动归档 `年/月/日`、时间轴、缩略图、GPS 坐标视图、相册分类、批量操作、分享 |
 | 影视中心 | 媒体库扫描、ffprobe 元数据、TMDB 刮削、海报墙、详情、Range 流式播放、外挂字幕、倍速 |
@@ -94,11 +100,12 @@ PrivacyOS 不是"又一个网盘界面"，而是一套**可安装的操作系统
 # 方式一：前后端热更新开发
 make dev
 
-# 方式二：后台运行完整管理界面（单端口，适合直接体验）
+# 方式二：后台运行完整桌面（单端口，适合直接体验）
 make demo
 ```
 
-- 管理界面：<http://127.0.0.1:8080>（`make demo`）或 <http://127.0.0.1:5173>（`make dev`）
+- 桌面：<http://127.0.0.1:8080>（`make demo`）或 <http://127.0.0.1:5173>（`make dev`）
+- 安装引导预览：<http://127.0.0.1:8080/install>
 - API：<http://127.0.0.1:8080/api/v1>
 - 后台停止：`make demo-stop`，日志在 `runtime/privacyos.log`
 - 管理员：`padmin / privacyos`
@@ -139,8 +146,8 @@ make verify
 产物：
 
 ```
-build/privacyos-1.1.0-amd64.iso
-build/privacyos-1.1.0-amd64.iso.sha256
+build/privacyos-1.2.0-amd64.iso
+build/privacyos-1.2.0-amd64.iso.sha256
 build/payload/                     # 安装载荷
 build/LUKS-PASSPHRASE.txt          # 专业版安装时的 LUKS 口令（务必保存）
 build/initial-admin-password       # 首次安装的管理员密码
@@ -148,6 +155,10 @@ build/initial-admin-password       # 首次安装的管理员密码
 
 写入 U 盘后从 U 盘启动，选择 **Normal edition** 或 **Pro edition (full disk encryption)**。
 安装完成后访问 `http://<设备IP>`，初始密码见目标机 `/root/privacyos-initial-password`。
+
+> GitHub Actions 会在推送 `v*` tag 时自动构建 **netinst 测试 ISO** 并发布到
+> [Releases](https://github.com/likeweixue/privacyos/releases)；测试 ISO 约 800MB，
+> 安装时需要虚拟机联网从 `deb.debian.org` 拉取软件包。
 
 > 提供的 `debian-13.7.0-amd64-DVD-1.iso` 不包含 Samba 服务端 / NFS 服务端 / Docker 包。
 > 安装器会先完成离线核心安装；首次联网启动时 `privacyos-provision` 自动从

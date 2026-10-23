@@ -1,0 +1,83 @@
+name: Build test ISO
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  iso:
+    name: Netinst ISO (BIOS + UEFI)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: backend/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install ISO tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            xorriso isolinux syslinux-common mtools dosfstools
+
+      - name: Download Debian 13.7 netinst
+        run: |
+          curl -fL --retry 3 --retry-delay 5 \
+            -o /tmp/debian-13.7.0-amd64-netinst.iso \
+            "https://cdimage.debian.org/debian-cd/13.7.0/amd64/iso-cd/debian-13.7.0-amd64-netinst.iso"
+          ls -lh /tmp/debian-13.7.0-amd64-netinst.iso
+
+      - name: Build payload
+        env:
+          PRIVACYOS_ADMIN_PASSWORD: privacytest2026
+        run: make payload
+
+      - name: Build PrivacyOS netinst ISO
+        env:
+          PRIVACYOS_NETINST: '1'
+          PRIVACYOS_MIN_ISO_BYTES: '500000000'
+          PRIVACYOS_LUKS_PASSPHRASE: privacyluks2026
+        run: |
+          ./installer/scripts/build-iso.sh \
+            --source /tmp/debian-13.7.0-amd64-netinst.iso \
+            --output "build/privacyos-$(cat VERSION)-amd64.iso"
+          ./installer/scripts/verify-iso.sh "build/privacyos-$(cat VERSION)-amd64.iso"
+          ls -lh build/*.iso build/*.iso.sha256
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          body: |
+            ## PrivacyOS ${{ github.ref_name }} — test ISO
+
+            This is a **netinst test image** built for VM evaluation. The Debian
+            package pool is not embedded; the installer fetches packages from
+            `deb.debian.org`, so the VM needs network access.
+
+            - BIOS + UEFI hybrid boot
+            - Editions: Standard and Pro (LUKS)
+            - Standard admin: `padmin / privacytest2026`
+            - Pro LUKS passphrase: `privacyluks2026`
+            - After installation, open `http://<vm-ip>`; change the password immediately.
+            - Samba / NFS / Docker are installed online by `privacyos-provision`.
+
+            Verify with the adjacent `.sha256` file.
+          files: |
+            build/*.iso
+            build/*.iso.sha256

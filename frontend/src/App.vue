@@ -12,10 +12,12 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import enUs from 'element-plus/es/locale/lang/en'
 import { useUiStore } from './stores/ui'
 import { useAuthStore } from './stores/auth'
+import { useDesktopStore } from './stores/desktop'
 import { useI18n } from 'vue-i18n'
 
 const ui = useUiStore()
 const auth = useAuthStore()
+const desktop = useDesktopStore()
 const router = useRouter()
 const { t } = useI18n()
 
@@ -25,6 +27,7 @@ onMounted(() => {
   ui.applyTheme()
   window.addEventListener('pos:logout', () => {
     auth.user = null
+    desktop.closeAll()
     if (router.currentRoute.value.name !== 'login') {
       ElMessage.warning(t('errors.unauthorized'))
       router.replace({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })

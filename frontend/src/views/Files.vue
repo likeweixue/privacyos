@@ -1,6 +1,7 @@
 <template>
   <div class="pos-page files-page">
     <PageHeader :title="t('files.title')" :subtitle="t('files.subtitle')">
+      <el-button :icon="CopyDocument" @click="openNewWindow">{{ t('desktop.newWindow') }}</el-button>
       <el-radio-group v-model="viewMode" size="small">
         <el-radio-button value="list"><el-icon><List /></el-icon></el-radio-button>
         <el-radio-button value="grid"><el-icon><Grid /></el-icon></el-radio-button>
@@ -362,10 +363,12 @@ import FileIcon from '../components/FileIcon.vue'
 import EmptyState from '../components/EmptyState.vue'
 import { api, apiURL, errorMessage } from '../api'
 import { useUiStore } from '../stores/ui'
+import { useDesktopStore } from '../stores/desktop'
 import { formatBytes, formatDate, fileExt } from '../utils/format'
 
 const { t } = useI18n()
 const ui = useUiStore()
+const desktop = useDesktopStore()
 
 const treeRef = ref(null)
 const treeKey = ref(0)
@@ -839,6 +842,10 @@ function ctxAction(cmd) {
   else if (cmd === 'share') shareEntry(entry)
   else if (cmd === 'details') { detailEntry.value = entry; detailsOpen.value = true }
   else if (cmd === 'delete') deleteEntries([entry])
+}
+
+function openNewWindow() {
+  desktop.open('files', { forceNew: true })
 }
 
 function closeContext() {
