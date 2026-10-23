@@ -89,6 +89,8 @@ log "输出   : ${OUTPUT_ISO}"
 [ "${NETINST}" = "1" ] && log "模式   : netinst（安装时使用在线 Debian 镜像）"
 
 mkdir -p "${WORK_DIR}" "$(dirname "${OUTPUT_ISO}")"
+# xorriso runs inside TREE_DIR; make the output path absolute first.
+OUTPUT_ISO="$(cd "$(dirname "${OUTPUT_ISO}")" && pwd)/$(basename "${OUTPUT_ISO}")"
 
 # ---------------------------------------------------------------------------
 # 1. 解包源 ISO

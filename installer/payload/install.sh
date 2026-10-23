@@ -20,7 +20,7 @@ DATA_DIR="/data"
 CONFIG_DIR="/etc/privacyos"
 LOG_DIR="/var/log/privacyos"
 STATE_DIR="/var/lib/privacyos"
-VERSION="$(cat "${SRC}/version" 2>/dev/null || echo "1.2.0")"
+VERSION="$(cat "${SRC}/version" 2>/dev/null || echo "1.2.1")"
 EDITION="$(cat "${SRC}/edition" 2>/dev/null || echo "normal")"
 [ "${EDITION}" = "pro" ] || EDITION="normal"
 START_SERVICES=0

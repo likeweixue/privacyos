@@ -130,13 +130,13 @@ jobs:
           ./installer/scripts/build-payload.sh
           ./installer/scripts/build-iso.sh \
             --source /tmp/debian-13.7.0-amd64-DVD-1.iso \
-            --output build/privacyos-1.2.0-amd64.iso \
+            --output build/privacyos-1.2.1-amd64.iso \
             --no-md5
-          ./installer/scripts/verify-iso.sh build/privacyos-1.2.0-amd64.iso
+          ./installer/scripts/verify-iso.sh build/privacyos-1.2.1-amd64.iso
       - uses: actions/upload-artifact@v4
         with:
           name: privacyos-iso
           path: |
-            build/privacyos-1.2.0-amd64.iso
-            build/privacyos-1.2.0-amd64.iso.sha256
+            build/privacyos-1.2.1-amd64.iso
+            build/privacyos-1.2.1-amd64.iso.sha256
           retention-days: 3

@@ -72,7 +72,7 @@ build/payload/
 ```bash
 ./installer/scripts/build-iso.sh \
   --source "../开发文档/debian-13.7.0-amd64-DVD-1.iso" \
-  --output "build/privacyos-1.2.0-amd64.iso"
+  --output "build/privacyos-1.2.1-amd64.iso"
 ```
 
 脚本流程：
@@ -106,8 +106,8 @@ build/payload/
 产物：
 
 ```text
-build/privacyos-1.2.0-amd64.iso
-build/privacyos-1.2.0-amd64.iso.sha256
+build/privacyos-1.2.1-amd64.iso
+build/privacyos-1.2.1-amd64.iso.sha256
 build/LUKS-PASSPHRASE.txt      # 0600
 ```
 
@@ -141,7 +141,7 @@ build/LUKS-PASSPHRASE.txt      # 0600
 # 2) 使用 Debian 13 容器重新打包
 ./installer/scripts/build-in-docker.sh \
   --source "/path/to/debian-13.7.0-amd64-DVD-1.iso" \
-  --output "$PWD/build/privacyos-1.2.0-amd64.iso"
+  --output "$PWD/build/privacyos-1.2.1-amd64.iso"
 ```
 
 容器镜像 `installer/Dockerfile.builder` 只包含 `xorriso`/`isolinux` 等打包工具，
@@ -150,7 +150,7 @@ build/LUKS-PASSPHRASE.txt      # 0600
 ## 5. 校验 ISO
 
 ```bash
-./installer/scripts/verify-iso.sh build/privacyos-1.2.0-amd64.iso
+./installer/scripts/verify-iso.sh build/privacyos-1.2.1-amd64.iso
 ```
 
 检查项：
@@ -166,7 +166,7 @@ build/LUKS-PASSPHRASE.txt      # 0600
 
 ```bash
 # Linux / macOS（确认盘符后执行！）
-sudo dd if=build/privacyos-1.2.0-amd64.iso of=/dev/rdiskX bs=4m status=progress && sync
+sudo dd if=build/privacyos-1.2.1-amd64.iso of=/dev/rdiskX bs=4m status=progress && sync
 ```
 
 Windows 可使用 Rufus（DD 模式）或 balenaEtcher。

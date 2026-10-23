@@ -146,8 +146,8 @@ make verify
 产物：
 
 ```
-build/privacyos-1.2.0-amd64.iso
-build/privacyos-1.2.0-amd64.iso.sha256
+build/privacyos-1.2.1-amd64.iso
+build/privacyos-1.2.1-amd64.iso.sha256
 build/payload/                     # 安装载荷
 build/LUKS-PASSPHRASE.txt          # 专业版安装时的 LUKS 口令（务必保存）
 build/initial-admin-password       # 首次安装的管理员密码

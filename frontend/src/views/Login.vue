@@ -95,7 +95,7 @@
         <footer class="login-foot">
           <router-link class="installer-link" :to="{ name: 'install' }">{{ t('installer.title') }}</router-link>
           <span class="dot">·</span>
-          <span>v{{ info.version || '1.2.0' }}</span>
+          <span>v{{ info.version || '1.2.1' }}</span>
           <span class="dot">·</span>
           <a :href="info.website || '#'" target="_blank" rel="noreferrer">{{ info.website || 'privacyos' }}</a>
           <span class="spacer" />
@@ -122,7 +122,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const ui = useUiStore()
 
-const info = ref({ name: 'PrivacyOS', version: '1.2.0', edition: 'normal', website: 'privacyos.local', dev: false })
+const info = ref({ name: 'PrivacyOS', version: '1.2.1', edition: 'normal', website: 'privacyos.local', dev: false })
 const form = ref({ username: '', password: '', totp: '' })
 const needTotp = ref(false)
 const retryAfter = ref(0)
