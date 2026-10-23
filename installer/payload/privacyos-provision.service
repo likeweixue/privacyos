@@ -1,0 +1,17 @@
+[Unit]
+Description=PrivacyOS Optional Component Provisioning (Samba/NFS/Docker)
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=!/var/lib/privacyos/provisioned
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/privacyos-provision
+TimeoutStartSec=45min
+Nice=15
+IOSchedulingClass=idle
+StandardOutput=append:/var/log/privacyos/provision.log
+StandardError=append:/var/log/privacyos/provision.log
+
+[Install]
+WantedBy=multi-user.target

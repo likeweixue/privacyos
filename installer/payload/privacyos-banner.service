@@ -1,0 +1,15 @@
+[Unit]
+Description=PrivacyOS Boot Banner (name, IP, version, edition)
+After=network-online.target privacyos.service
+Wants=network-online.target
+Before=getty@tty1.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/privacyos/banner.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

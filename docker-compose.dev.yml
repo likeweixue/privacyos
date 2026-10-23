@@ -1,0 +1,38 @@
+# PrivacyOS 开发环境（可选）
+#
+#   docker compose -f docker-compose.dev.yml up
+#
+# 面板: http://127.0.0.1:5173
+# API : http://127.0.0.1:8080
+#
+# 数据写入 ./dev-data，使用模拟硬件数据，不会访问宿主机磁盘。
+services:
+  backend:
+    image: golang:1.24-bookworm
+    working_dir: /app/backend
+    environment:
+      PRIVACYOS_DEV: "1"
+      PRIVACYOS_LISTEN: "0.0.0.0:8080"
+      PRIVACYOS_DATA_DIR: "/app/dev-data/data"
+      PRIVACYOS_CONFIG_DIR: "/app/dev-data/etc"
+      PRIVACYOS_LOG_DIR: "/app/dev-data/log"
+      GOPROXY: "https://proxy.golang.org,direct"
+    volumes:
+      - .:/app
+    command: sh -c "go mod download && go run ./cmd/privacyos-server"
+    ports:
+      - "8080:8080"
+
+  frontend:
+    image: node:22-bookworm
+    working_dir: /app/frontend
+    environment:
+      VITE_PROXY_TARGET: "http://backend:8080"
+      npm_config_cache: "/tmp/npm-cache"
+    volumes:
+      - .:/app
+    command: sh -c "npm install --no-audit --no-fund && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend

@@ -1,0 +1,9 @@
+[Unit]
+Description=PrivacyOS weekly SMART short self-test
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/privacyos-smart-scan
+Nice=19
+IOSchedulingClass=idle

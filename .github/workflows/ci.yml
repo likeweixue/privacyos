@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      iso_url:
+        description: "Debian 13.7 DVD-1 ISO 下载地址（仅 ISO 任务使用）"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (Go)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: backend/go.sum
+      - name: Vet
+        working-directory: backend
+        run: go vet ./...
+      - name: Test
+        working-directory: backend
+        run: go test ./... -count=1
+      - name: Build linux/amd64
+        working-directory: backend
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
+            -ldflags "-s -w -X privacyos/backend/internal/version.Version=$(cat ../VERSION)" \
+            -o ../build/privacyos-server ./cmd/privacyos-server
+      - name: Verify static binary
+        run: file build/privacyos-server
+      - uses: actions/upload-artifact@v4
+        with:
+          name: privacyos-server
+          path: build/privacyos-server
+          retention-days: 7
+
+  frontend:
+    name: Frontend (Vue)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+      - name: Check i18n keys
+        working-directory: frontend
+        run: npm run check:i18n
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: privacyos-web
+          path: frontend/dist
+          retention-days: 7
+
+  scripts:
+    name: Installer scripts
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: bash -n
+        run: |
+          set -e
+          for f in installer/scripts/*.sh installer/payload/*.sh scripts/*.sh; do
+            echo "checking $f"
+            bash -n "$f"
+          done
+      - name: Install ShellCheck and lint (errors only)
+        continue-on-error: true
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y shellcheck
+          shellcheck --severity=error installer/scripts/*.sh installer/payload/*.sh scripts/*.sh
+
+  iso:
+    name: Build ISO (manual)
+    if: github.event_name == 'workflow_dispatch' && inputs.iso_url != ''
+    needs: [backend, frontend, scripts]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install ISO tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y xorriso isolinux syslinux-common mtools dosfstools
+      - name: Require credential secrets
+        env:
+          ADMIN: ${{ secrets.PRIVACYOS_ADMIN_PASSWORD }}
+          LUKS: ${{ secrets.PRIVACYOS_LUKS_PASSPHRASE }}
+        run: |
+          if [ -z "$ADMIN" ] || [ -z "$LUKS" ]; then
+            echo "::error::请配置仓库 Secrets PRIVACYOS_ADMIN_PASSWORD 与 PRIVACYOS_LUKS_PASSPHRASE"
+            exit 1
+          fi
+      - name: Download Debian 13.7 DVD-1
+        run: |
+          curl -fL --retry 3 --retry-delay 5 -o /tmp/debian-13.7.0-amd64-DVD-1.iso \
+            "${{ inputs.iso_url }}"
+          ls -lh /tmp/debian-13.7.0-amd64-DVD-1.iso
+      - name: Build payload and ISO
+        env:
+          PRIVACYOS_ADMIN_PASSWORD: ${{ secrets.PRIVACYOS_ADMIN_PASSWORD }}
+          PRIVACYOS_LUKS_PASSPHRASE: ${{ secrets.PRIVACYOS_LUKS_PASSPHRASE }}
+        run: |
+          ./installer/scripts/build-payload.sh
+          ./installer/scripts/build-iso.sh \
+            --source /tmp/debian-13.7.0-amd64-DVD-1.iso \
+            --output build/privacyos-1.0.0-amd64.iso \
+            --no-md5
+          ./installer/scripts/verify-iso.sh build/privacyos-1.0.0-amd64.iso
+      - uses: actions/upload-artifact@v4
+        with:
+          name: privacyos-iso
+          path: |
+            build/privacyos-1.0.0-amd64.iso
+            build/privacyos-1.0.0-amd64.iso.sha256
+          retention-days: 3

@@ -1,0 +1,30 @@
+[Unit]
+Description=PrivacyOS Web Panel
+Documentation=https://privacyos.local
+After=network-online.target docker.service
+Wants=network-online.target
+Conflicts=shutdown.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/privacyos
+EnvironmentFile=-/etc/privacyos/privacyos.env
+ExecStart=/opt/privacyos/bin/privacyos-server
+Restart=always
+RestartSec=3
+User=root
+LimitNOFILE=65536
+# 基础加固：/usr 与 /boot 只读；面板需要写 /etc（Samba/NFS/网络/账号）与 apt 状态
+ProtectSystem=yes
+ReadWritePaths=/data /etc/privacyos /var/log/privacyos
+PrivateTmp=true
+ProtectHome=false
+ProtectClock=true
+ProtectHostname=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

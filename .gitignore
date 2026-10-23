@@ -1,0 +1,44 @@
+# build artifacts
+build/
+dist/
+*.exe
+*.test
+*.out
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# runtime / dev data
+dev-data/
+data/
+logs/
+*.db
+*.db-shm
+*.db-wal
+privacyos.db
+
+# iso work dirs
+iso-build/
+*.iso
+!开发文档/*.iso
+
+# secrets
+*.key
+secret.key
+.env
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# local browser / temp profiles
+.chrome-profile/
+.tmp/
+
+# runtime demo server
+runtime/

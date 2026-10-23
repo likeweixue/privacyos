@@ -1,0 +1,275 @@
+:root {
+  --pos-bg: #0b0f14;
+  --pos-bg-soft: #0e1620;
+  --pos-panel: #111a23;
+  --pos-panel-2: #16212c;
+  --pos-border: #22303c;
+  --pos-text: #e6edf3;
+  --pos-muted: #8ba1b4;
+  --pos-accent: #2dd4bf;
+  --pos-accent-soft: rgba(45, 212, 191, 0.14);
+  --pos-blue: #60a5fa;
+  --pos-danger: #f87171;
+  --pos-warning: #fbbf24;
+  --pos-success: #34d399;
+  --pos-radius: 14px;
+  --pos-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+  --el-color-primary: #2dd4bf;
+  --el-color-primary-light-3: #5eead4;
+  --el-color-primary-light-5: #99f6e4;
+  --el-color-primary-light-7: rgba(45, 212, 191, 0.35);
+  --el-color-primary-light-8: rgba(45, 212, 191, 0.22);
+  --el-color-primary-light-9: rgba(45, 212, 191, 0.12);
+  --el-color-primary-dark-2: #14b8a6;
+  --el-border-radius-base: 9px;
+  --el-font-family: 'Inter', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+}
+
+html.dark {
+  --el-bg-color: #111a23;
+  --el-bg-color-page: #0b0f14;
+  --el-bg-color-overlay: #16212c;
+  --el-text-color-primary: #e6edf3;
+  --el-text-color-regular: #c2d0dc;
+  --el-text-color-secondary: #8ba1b4;
+  --el-text-color-placeholder: #6b8294;
+  --el-border-color: #22303c;
+  --el-border-color-light: #1e2b36;
+  --el-border-color-lighter: #1a252f;
+  --el-fill-color-blank: #0e1620;
+  --el-fill-color-light: #16212c;
+  --el-fill-color-lighter: #131d26;
+  --el-color-primary: #14b8a6;
+  --el-color-primary-light-3: #2dd4bf;
+  --el-color-primary-light-5: #5eead4;
+  --el-color-primary-light-7: rgba(20, 184, 166, 0.42);
+  --el-color-primary-light-8: rgba(20, 184, 166, 0.26);
+  --el-color-primary-light-9: rgba(20, 184, 166, 0.14);
+  --el-color-primary-dark-2: #0d9488;
+  --el-color-success: #34d399;
+  --el-color-warning: #fbbf24;
+  --el-color-danger: #f87171;
+  --el-color-error: #f87171;
+  --el-color-info: #8ba1b4;
+  --el-mask-color: rgba(11, 15, 20, 0.72);
+}
+
+html.light {
+  --pos-bg: #f4f7fa;
+  --pos-bg-soft: #e9eff5;
+  --pos-panel: #ffffff;
+  --pos-panel-2: #f7fafc;
+  --pos-border: #dde6ee;
+  --pos-text: #101b26;
+  --pos-muted: #5c7186;
+  --pos-accent: #0d9488;
+  --pos-accent-soft: rgba(13, 148, 136, 0.1);
+  --pos-shadow: 0 16px 40px rgba(15, 34, 51, 0.09);
+  --el-bg-color: #ffffff;
+  --el-bg-color-page: #f4f7fa;
+  --el-bg-color-overlay: #ffffff;
+  --el-text-color-primary: #101b26;
+  --el-text-color-regular: #2c3e50;
+  --el-fill-color-blank: #f7fafc;
+  --el-fill-color-light: #eef3f8;
+  --el-border-color: #dde6ee;
+  --el-color-primary: #0d9488;
+  --el-color-primary-light-3: #14b8a6;
+  --el-color-primary-light-5: #2dd4bf;
+  --el-color-primary-light-7: rgba(13, 148, 136, 0.35);
+  --el-color-primary-light-8: rgba(13, 148, 136, 0.22);
+  --el-color-primary-light-9: rgba(13, 148, 136, 0.1);
+  --el-color-primary-dark-2: #0f766e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--pos-bg);
+  color: var(--pos-text);
+  font-family: var(--el-font-family);
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+a {
+  color: var(--pos-accent);
+  text-decoration: none;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 161, 180, 0.28);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 161, 180, 0.45);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------- shared primitives ---------- */
+.pos-panel {
+  background: var(--pos-panel);
+  border: 1px solid var(--pos-border);
+  border-radius: var(--pos-radius);
+  box-shadow: var(--pos-shadow);
+}
+
+.pos-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: pos-fade 0.28s ease;
+}
+
+@keyframes pos-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pos-muted {
+  color: var(--pos-muted);
+}
+
+.pos-mono {
+  font-family: 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.pos-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.pos-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pos-spacer {
+  flex: 1;
+}
+
+.pos-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pos-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.pos-hint {
+  font-size: 12px;
+  color: var(--pos-muted);
+  line-height: 1.7;
+}
+
+.el-card,
+.el-dialog,
+.el-drawer {
+  background: var(--pos-panel) !important;
+  border-color: var(--pos-border) !important;
+}
+
+.el-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--pos-panel-2);
+  --el-table-border-color: var(--pos-border);
+  --el-table-row-hover-bg-color: rgba(45, 212, 191, 0.06);
+}
+
+.el-table th.el-table__cell {
+  font-weight: 600;
+  color: var(--pos-muted);
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner {
+  background: var(--pos-panel-2) !important;
+  box-shadow: 0 0 0 1px var(--pos-border) inset !important;
+}
+
+.el-button {
+  font-weight: 500;
+}
+
+.el-dialog__title,
+.el-drawer__title {
+  font-weight: 600;
+}
+
+.el-message-box {
+  background: var(--pos-panel) !important;
+  border-color: var(--pos-border) !important;
+}
+
+.el-empty__description p {
+  color: var(--pos-muted);
+}
+
+.el-tabs__item {
+  color: var(--pos-muted);
+}
+
+.el-tabs__item.is-active {
+  color: var(--pos-accent);
+}
+
+.el-tag {
+  border-radius: 7px;
+}
+
+.el-pagination {
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.el-pagination button,
+.el-pager li {
+  background: var(--pos-panel-2) !important;
+  color: var(--pos-text) !important;
+}
+
+.el-pager li.is-active {
+  background: var(--pos-accent-soft) !important;
+  color: var(--pos-accent) !important;
+}
+
+.el-loading-mask {
+  background-color: rgba(11, 15, 20, 0.65) !important;
+}
+
+html.light .el-loading-mask {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+}
