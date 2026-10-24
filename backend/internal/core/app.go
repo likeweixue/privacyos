@@ -75,7 +75,7 @@ type DestroySettings struct {
 
 // DeletionSettings configures cooling periods and trash retention.
 type DeletionSettings struct {
-	CoolingDays       int `json:"cooling_days"`
+	CoolingDays        int `json:"cooling_days"`
 	TrashRetentionDays int `json:"trash_retention_days"`
 }
 
@@ -87,20 +87,20 @@ type TMDBSettings struct {
 
 // NotificationSettings holds outbound notification channels.
 type NotificationSettings struct {
-	EmailEnabled   bool   `json:"email_enabled"`
-	SMTPHost       string `json:"smtp_host"`
-	SMTPPort       int    `json:"smtp_port"`
-	SMTPUser       string `json:"smtp_user"`
-	SMTPPassword   string `json:"smtp_password"`
-	SMTPFrom       string `json:"smtp_from"`
-	SMTPTo         string `json:"smtp_to"`
-	SMTPTLS        bool   `json:"smtp_tls"`
-	TelegramEnable bool   `json:"telegram_enabled"`
-	TelegramToken  string `json:"telegram_token"`
-	TelegramChatID string `json:"telegram_chat_id"`
-	BarkEnabled    bool   `json:"bark_enabled"`
-	BarkURL        string `json:"bark_url"`
-	ServerChanKey  string `json:"serverchan_key"`
+	EmailEnabled   bool     `json:"email_enabled"`
+	SMTPHost       string   `json:"smtp_host"`
+	SMTPPort       int      `json:"smtp_port"`
+	SMTPUser       string   `json:"smtp_user"`
+	SMTPPassword   string   `json:"smtp_password"`
+	SMTPFrom       string   `json:"smtp_from"`
+	SMTPTo         string   `json:"smtp_to"`
+	SMTPTLS        bool     `json:"smtp_tls"`
+	TelegramEnable bool     `json:"telegram_enabled"`
+	TelegramToken  string   `json:"telegram_token"`
+	TelegramChatID string   `json:"telegram_chat_id"`
+	BarkEnabled    bool     `json:"bark_enabled"`
+	BarkURL        string   `json:"bark_url"`
+	ServerChanKey  string   `json:"serverchan_key"`
 	Events         []string `json:"events"`
 }
 
@@ -157,24 +157,32 @@ type HTTPSSettings struct {
 
 // BackupSettings holds scheduled configuration backup preferences.
 type BackupSettings struct {
-	Auto     bool `json:"auto"`
-	Keep     int  `json:"keep"`
+	Auto     bool   `json:"auto"`
+	Keep     int    `json:"keep"`
 	Schedule string `json:"schedule"`
+}
+
+// AppearanceSettings controls desktop/window personalization.
+type AppearanceSettings struct {
+	WindowRadius   int    `json:"window_radius"`
+	Wallpaper      string `json:"wallpaper"`
+	LoginWallpaper bool   `json:"login_wallpaper"`
 }
 
 // Settings is the aggregate configuration view.
 type Settings struct {
-	Security      SecuritySettings      `json:"security"`
-	Destroy       DestroySettings       `json:"destroy"`
-	Deletion      DeletionSettings      `json:"deletion"`
-	TMDB          TMDBSettings          `json:"tmdb"`
-	Notifications NotificationSettings  `json:"notifications"`
-	Network       NetworkSettings       `json:"network"`
-	DDNS          DDNSSettings          `json:"ddns"`
-	System        SystemSettings        `json:"system"`
-	Normal        NormalSettings        `json:"normal"`
-	HTTPS         HTTPSSettings         `json:"https"`
-	Backup        BackupSettings        `json:"backup"`
+	Security      SecuritySettings     `json:"security"`
+	Destroy       DestroySettings      `json:"destroy"`
+	Deletion      DeletionSettings     `json:"deletion"`
+	TMDB          TMDBSettings         `json:"tmdb"`
+	Notifications NotificationSettings `json:"notifications"`
+	Network       NetworkSettings      `json:"network"`
+	DDNS          DDNSSettings         `json:"ddns"`
+	System        SystemSettings       `json:"system"`
+	Normal        NormalSettings       `json:"normal"`
+	HTTPS         HTTPSSettings        `json:"https"`
+	Backup        BackupSettings       `json:"backup"`
+	Appearance    AppearanceSettings   `json:"appearance"`
 }
 
 // DefaultSettings returns the factory defaults.
@@ -199,6 +207,7 @@ func DefaultSettings() Settings {
 		Normal:        NormalSettings{AdminSeeAll: true},
 		HTTPS:         HTTPSSettings{Enabled: false, Mode: "selfsigned"},
 		Backup:        BackupSettings{Keep: 7, Schedule: "daily"},
+		Appearance:    AppearanceSettings{WindowRadius: 0},
 	}
 }
 
@@ -209,7 +218,7 @@ func (a *App) EnsureDefaults() error {
 		"security": d.Security, "destroy": d.Destroy, "deletion": d.Deletion,
 		"tmdb": d.TMDB, "notifications": d.Notifications, "network": d.Network,
 		"ddns": d.DDNS, "system": d.System, "normal": d.Normal,
-		"https": d.HTTPS, "backup": d.Backup,
+		"https": d.HTTPS, "backup": d.Backup, "appearance": d.Appearance,
 	}
 	for k, v := range fields {
 		if err := a.Store.DefaultSetting(k, v); err != nil {
@@ -233,6 +242,7 @@ func (a *App) LoadSettings() Settings {
 	_, _ = a.Store.Setting("normal", &s.Normal)
 	_, _ = a.Store.Setting("https", &s.HTTPS)
 	_, _ = a.Store.Setting("backup", &s.Backup)
+	_, _ = a.Store.Setting("appearance", &s.Appearance)
 	if s.Network.Interfaces == nil {
 		s.Network.Interfaces = map[string]InterfaceConfig{}
 	}

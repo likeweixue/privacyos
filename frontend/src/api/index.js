@@ -174,6 +174,14 @@ export const api = {
     map: () => unwrap(http.get('/photos/map')),
     get: (id) => unwrap(http.get(`/photos/${id}`)),
     remove: (id) => unwrap(http.delete(`/photos/${id}`)),
+    restore: (id) => unwrap(http.post(`/photos/${id}/restore`)),
+    purge: (id) => unwrap(http.delete(`/photos/${id}/permanent`)),
+    favorite: (id, favorite) => unwrap(http.post(`/photos/${id}/favorite`, { favorite })),
+    sources: () => unwrap(http.get('/photos/sources')),
+    addSources: (paths) => unwrap(http.post('/photos/sources', { paths })),
+    removeSource: (id) => unwrap(http.delete(`/photos/sources/${id}`)),
+    duplicates: () => unwrap(http.get('/photos/duplicates')),
+    mergeDuplicates: () => unwrap(http.post('/photos/duplicates/merge')),
     share: (id, payload) => unwrap(http.post(`/photos/${id}/share`, payload)),
     upload: (formData, onProgress) =>
       unwrap(http.post('/photos/upload', formData, { timeout: 0, onUploadProgress: onProgress })),
@@ -286,7 +294,9 @@ export const api = {
     destroyPolicy: () => unwrap(http.get('/system/destroy/policy')),
     setDestroyPolicy: (payload) => unwrap(http.put('/system/destroy/policy', payload)),
     testNotification: () => unwrap(http.post('/notifications/test')),
-    restoreBackup: (formData) => unwrap(http.post('/system/restore', formData, { timeout: 0 }))
+    restoreBackup: (formData) => unwrap(http.post('/system/restore', formData, { timeout: 0 })),
+    uploadWallpaper: (formData) => unwrap(http.post('/system/wallpaper', formData, { timeout: 0 })),
+    deleteWallpaper: () => unwrap(http.delete('/system/wallpaper'))
   },
   notifications: {
     list: (params) => unwrap(http.get('/notifications', { params })),

@@ -128,7 +128,7 @@ onMounted(focusSearch)
   flex-direction: column;
   background: var(--pos-panel);
   border: 1px solid var(--pos-border-strong);
-  border-radius: 3px;
+  border-radius: var(--pos-window-radius, 0px);
   box-shadow: 0 22px 60px rgba(20, 32, 44, 0.22);
   overflow: hidden;
 }

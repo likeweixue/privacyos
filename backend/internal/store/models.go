@@ -166,10 +166,26 @@ type Photo struct {
 	Orientation int     `json:"orientation"`
 	ThumbPath   string  `json:"-"`
 	SHA256      string  `json:"sha256,omitempty"`
+	Favorite    bool    `json:"favorite"`
+	DeletedAt   string  `json:"deleted_at,omitempty"`
 	CreatedAt   string  `json:"created_at"`
 	// URL fields are filled by the API layer.
 	FileURL  string `json:"file_url,omitempty"`
 	ThumbURL string `json:"thumb_url,omitempty"`
+}
+
+// PhotoSource is an additional folder indexed into the photo library.
+type PhotoSource struct {
+	ID        int64  `json:"id"`
+	OwnerID   int64  `json:"owner_id"`
+	Path      string `json:"path"`
+	CreatedAt string `json:"created_at"`
+}
+
+// DuplicateGroup groups indexed photos sharing the same content hash.
+type DuplicateGroup struct {
+	SHA256 string  `json:"sha256"`
+	Photos []Photo `json:"photos"`
 }
 
 // Album is a user-defined photo album.

@@ -7,19 +7,23 @@ import (
 )
 
 const photoColumns = `id, owner_id, path, file_name, size_bytes, width, height, taken_at, camera, lens,
-	gps_lat, gps_lng, orientation, thumb_path, sha256, created_at`
+	gps_lat, gps_lng, orientation, thumb_path, sha256, favorite, deleted_at, created_at`
 
 func scanPhoto(sc rowScanner) (*Photo, error) {
 	var p Photo
-	var taken sql.NullString
+	var taken, deleted sql.NullString
 	var lat, lng sql.NullFloat64
+	var favorite int
 	if err := sc.Scan(&p.ID, &p.OwnerID, &p.Path, &p.FileName, &p.SizeBytes, &p.Width, &p.Height,
-		&taken, &p.Camera, &p.Lens, &lat, &lng, &p.Orientation, &p.ThumbPath, &p.SHA256, &p.CreatedAt); err != nil {
+		&taken, &p.Camera, &p.Lens, &lat, &lng, &p.Orientation, &p.ThumbPath, &p.SHA256,
+		&favorite, &deleted, &p.CreatedAt); err != nil {
 		return nil, err
 	}
 	p.TakenAt = taken.String
 	p.GPSLat = lat.Float64
 	p.GPSLng = lng.Float64
+	p.Favorite = favorite != 0
+	p.DeletedAt = deleted.String
 	return &p, nil
 }
 
@@ -69,7 +73,7 @@ func (s *Store) GetPhotoByPath(ownerID int64, path string) (*Photo, error) {
 }
 
 // ListPhotos returns a filtered page of photos and the total count.
-func (s *Store) ListPhotos(ownerID int64, search, from, to string, page, pageSize int) ([]Photo, int, error) {
+func (s *Store) ListPhotos(ownerID int64, view, search, from, to string, page, pageSize int) ([]Photo, int, error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -81,6 +85,14 @@ func (s *Store) ListPhotos(ownerID int64, search, from, to string, page, pageSiz
 	if ownerID > 0 {
 		where = append(where, "owner_id=?")
 		args = append(args, ownerID)
+	}
+	if view == "deleted" {
+		where = append(where, "deleted_at IS NOT NULL")
+	} else {
+		where = append(where, "deleted_at IS NULL")
+		if view == "favorites" {
+			where = append(where, "favorite=1")
+		}
 	}
 	if search != "" {
 		where = append(where, "file_name LIKE ? ESCAPE '\\'")
@@ -103,8 +115,12 @@ func (s *Store) ListPhotos(ownerID int64, search, from, to string, page, pageSiz
 		return nil, 0, err
 	}
 	args = append(args, pageSize, (page-1)*pageSize)
+	order := "COALESCE(taken_at, created_at) DESC"
+	if view == "recent" {
+		order = "created_at DESC"
+	}
 	rows, err := s.db.Query(`SELECT `+photoColumns+` FROM photos`+clause+`
-		ORDER BY COALESCE(taken_at, created_at) DESC, id DESC LIMIT ? OFFSET ?`, args...)
+		ORDER BY `+order+`, id DESC LIMIT ? OFFSET ?`, args...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -128,10 +144,10 @@ func (s *Store) DeletePhotoRecord(id int64) error {
 
 // CountPhotos counts indexed photos (ownerID 0 = all).
 func (s *Store) CountPhotos(ownerID int64) (int, error) {
-	q := `SELECT COUNT(*) FROM photos`
+	q := `SELECT COUNT(*) FROM photos WHERE deleted_at IS NULL`
 	args := []any{}
 	if ownerID > 0 {
-		q += ` WHERE owner_id=?`
+		q += ` AND owner_id=?`
 		args = append(args, ownerID)
 	}
 	var n int
@@ -148,7 +164,7 @@ type DateCount struct {
 // PhotoTimeline returns per-day counts for a user.
 func (s *Store) PhotoTimeline(ownerID int64) ([]DateCount, error) {
 	rows, err := s.db.Query(`SELECT substr(COALESCE(taken_at, created_at), 1, 10) AS d, COUNT(*)
-		FROM photos WHERE owner_id=? GROUP BY d ORDER BY d DESC`, ownerID)
+		FROM photos WHERE owner_id=? AND deleted_at IS NULL GROUP BY d ORDER BY d DESC`, ownerID)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +183,7 @@ func (s *Store) PhotoTimeline(ownerID int64) ([]DateCount, error) {
 // PhotosWithGPS returns geo-tagged photos for the map view.
 func (s *Store) PhotosWithGPS(ownerID int64) ([]Photo, error) {
 	rows, err := s.db.Query(`SELECT `+photoColumns+` FROM photos
-		WHERE owner_id=? AND gps_lat IS NOT NULL AND gps_lng IS NOT NULL
+		WHERE owner_id=? AND deleted_at IS NULL AND gps_lat IS NOT NULL AND gps_lng IS NOT NULL
 		ORDER BY COALESCE(taken_at, created_at) DESC LIMIT 500`, ownerID)
 	if err != nil {
 		return nil, err
@@ -266,7 +282,7 @@ func (s *Store) RemovePhotoFromAlbum(albumID, ownerID, photoID int64) error {
 func (s *Store) AlbumPhotos(albumID, ownerID int64) ([]Photo, error) {
 	rows, err := s.db.Query(`SELECT `+photoColumns+` FROM photos
 		WHERE id IN (SELECT photo_id FROM album_photos WHERE album_id=?)
-		AND owner_id=? ORDER BY COALESCE(taken_at, created_at) DESC`, albumID, ownerID)
+		AND owner_id=? AND deleted_at IS NULL ORDER BY COALESCE(taken_at, created_at) DESC`, albumID, ownerID)
 	if err != nil {
 		return nil, err
 	}
@@ -537,4 +553,144 @@ func (s *Store) CountMoviesByKind(ownerID int64) (map[string]int, error) {
 		out[k] = n
 	}
 	return out, rows.Err()
+}
+
+// SetPhotoFavorite toggles the favorite flag for a photo.
+func (s *Store) SetPhotoFavorite(id, ownerID int64, favorite bool) error {
+	res, err := s.db.Exec(`UPDATE photos SET favorite=? WHERE id=? AND owner_id=?`,
+		boolInt(favorite), id, ownerID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// SoftDeletePhoto marks a photo as deleted without removing the file.
+func (s *Store) SoftDeletePhoto(id, ownerID int64) error {
+	res, err := s.db.Exec(`UPDATE photos SET deleted_at=? WHERE id=? AND owner_id=? AND deleted_at IS NULL`,
+		Now(), id, ownerID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// RestorePhoto clears the soft-delete marker.
+func (s *Store) RestorePhoto(id, ownerID int64) error {
+	res, err := s.db.Exec(`UPDATE photos SET deleted_at=NULL WHERE id=? AND owner_id=?`, id, ownerID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// DuplicateGroups returns groups of photos sharing a non-empty SHA-256.
+func (s *Store) DuplicateGroups(ownerID int64) ([]DuplicateGroup, error) {
+	rows, err := s.db.Query(`SELECT `+photoColumns+` FROM photos
+		WHERE owner_id=? AND deleted_at IS NULL AND sha256 != ''
+		AND sha256 IN (
+			SELECT sha256 FROM photos WHERE owner_id=? AND deleted_at IS NULL AND sha256 != ''
+			GROUP BY sha256 HAVING COUNT(*) > 1
+		)
+		ORDER BY sha256, width*height DESC, size_bytes DESC`, ownerID, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	groups := []DuplicateGroup{}
+	index := map[string]int{}
+	for rows.Next() {
+		p, err := scanPhoto(rows)
+		if err != nil {
+			return nil, err
+		}
+		gi, ok := index[p.SHA256]
+		if !ok {
+			gi = len(groups)
+			index[p.SHA256] = gi
+			groups = append(groups, DuplicateGroup{SHA256: p.SHA256})
+		}
+		groups[gi].Photos = append(groups[gi].Photos, *p)
+	}
+	return groups, rows.Err()
+}
+
+// MergeDuplicateGroups soft-deletes lower-quality duplicates, keeping the
+// largest resolution (then largest file) in each group. Returns removed count.
+func (s *Store) MergeDuplicateGroups(ownerID int64) (int, error) {
+	groups, err := s.DuplicateGroups(ownerID)
+	if err != nil {
+		return 0, err
+	}
+	removed := 0
+	for _, g := range groups {
+		if len(g.Photos) < 2 {
+			continue
+		}
+		for _, p := range g.Photos[1:] {
+			if err := s.SoftDeletePhoto(p.ID, ownerID); err == nil {
+				removed++
+			}
+		}
+	}
+	return removed, nil
+}
+
+// ListPhotoSources returns the caller's extra photo source folders.
+func (s *Store) ListPhotoSources(ownerID int64) ([]PhotoSource, error) {
+	rows, err := s.db.Query(`SELECT id, owner_id, path, created_at FROM photo_sources
+		WHERE owner_id=? ORDER BY id`, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []PhotoSource{}
+	for rows.Next() {
+		var src PhotoSource
+		if err := rows.Scan(&src.ID, &src.OwnerID, &src.Path, &src.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, src)
+	}
+	return out, rows.Err()
+}
+
+// AddPhotoSource adds a source folder if not already present.
+func (s *Store) AddPhotoSource(ownerID int64, path string) (*PhotoSource, error) {
+	src := &PhotoSource{OwnerID: ownerID, Path: path, CreatedAt: Now()}
+	res, err := s.db.Exec(`INSERT INTO photo_sources (owner_id, path, created_at) VALUES (?,?,?)
+		ON CONFLICT(owner_id, path) DO NOTHING`, ownerID, path, src.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	if src.ID, _ = res.LastInsertId(); src.ID == 0 {
+		// Existing row; fetch its id.
+		if err := s.db.QueryRow(`SELECT id, created_at FROM photo_sources WHERE owner_id=? AND path=?`,
+			ownerID, path).Scan(&src.ID, &src.CreatedAt); err != nil {
+			return nil, err
+		}
+	}
+	return src, nil
+}
+
+// DeletePhotoSource removes a source folder.
+func (s *Store) DeletePhotoSource(id, ownerID int64) error {
+	_, err := s.db.Exec(`DELETE FROM photo_sources WHERE id=? AND owner_id=?`, id, ownerID)
+	return err
+}
+
+func boolInt(v bool) int {
+	if v {
+		return 1
+	}
+	return 0
 }

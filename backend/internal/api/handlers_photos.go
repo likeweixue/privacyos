@@ -37,7 +37,7 @@ func (s *Server) listPhotos(c *gin.Context) {
 			photos = []store.Photo{}
 		}
 	} else {
-		photos, total, err = s.Store.ListPhotos(u.ID, c.Query("q"), c.Query("from"), c.Query("to"), page, size)
+		photos, total, err = s.Store.ListPhotos(u.ID, c.DefaultQuery("view", ""), c.Query("q"), c.Query("from"), c.Query("to"), page, size)
 	}
 	if err != nil {
 		apiError(c, http.StatusInternalServerError, "query_failed", "读取照片失败")
@@ -189,16 +189,128 @@ func (s *Server) photoScan(c *gin.Context) {
 	created(c, job)
 }
 
-// photoDelete removes a photo.
+// photoDelete soft-deletes a photo (restorable from the Deleted view).
 func (s *Server) photoDelete(c *gin.Context) {
+	u := currentUser(c)
+	if err := s.Photos.SoftDelete(u, int64Param(c, "id")); err != nil {
+		apiError(c, http.StatusBadRequest, "delete_failed", err.Error())
+		return
+	}
+	s.Files.Invalidate(u.ID)
+	s.audit(c, "photo", "delete", c.Param("id"), "移入已删除", "ok")
+	ok(c, gin.H{"message": "照片已移入已删除"})
+}
+
+// photoRestore restores a soft-deleted photo.
+func (s *Server) photoRestore(c *gin.Context) {
+	u := currentUser(c)
+	if err := s.Photos.Restore(u, int64Param(c, "id")); err != nil {
+		apiError(c, http.StatusBadRequest, "restore_failed", err.Error())
+		return
+	}
+	s.Files.Invalidate(u.ID)
+	s.audit(c, "photo", "restore", c.Param("id"), "恢复照片", "ok")
+	ok(c, gin.H{"message": "照片已恢复"})
+}
+
+// photoPurge permanently removes a photo file and index row.
+func (s *Server) photoPurge(c *gin.Context) {
 	u := currentUser(c)
 	if err := s.Photos.Delete(u, int64Param(c, "id")); err != nil {
 		apiError(c, http.StatusBadRequest, "delete_failed", err.Error())
 		return
 	}
 	s.Files.Invalidate(u.ID)
-	s.audit(c, "photo", "delete", c.Param("id"), "删除照片", "ok")
-	ok(c, gin.H{"message": "照片已删除"})
+	s.audit(c, "photo", "purge", c.Param("id"), "永久删除照片", "ok")
+	ok(c, gin.H{"message": "照片已永久删除"})
+}
+
+// photoFavorite toggles the favorite flag.
+func (s *Server) photoFavorite(c *gin.Context) {
+	var req struct {
+		Favorite bool `json:"favorite"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	u := currentUser(c)
+	if err := s.Store.SetPhotoFavorite(int64Param(c, "id"), u.ID, req.Favorite); err != nil {
+		apiError(c, http.StatusBadRequest, "favorite_failed", err.Error())
+		return
+	}
+	ok(c, gin.H{"favorite": req.Favorite})
+}
+
+// photoSourcesList returns the extra photo source folders.
+func (s *Server) photoSourcesList(c *gin.Context) {
+	sources, err := s.Photos.Sources(currentUser(c))
+	if err != nil {
+		apiError(c, http.StatusInternalServerError, "query_failed", "读取照片来源失败")
+		return
+	}
+	ok(c, sources)
+}
+
+// photoSourcesAdd registers one or more folders and indexes their images.
+func (s *Server) photoSourcesAdd(c *gin.Context) {
+	var req struct {
+		Paths []string `json:"paths"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || len(req.Paths) == 0 {
+		apiError(c, http.StatusBadRequest, "invalid_source", "请选择文件夹")
+		return
+	}
+	u := currentUser(c)
+	total := 0
+	added := make([]store.PhotoSource, 0, len(req.Paths))
+	for _, rel := range req.Paths {
+		src, n, err := s.Photos.AddSource(u, rel)
+		if err != nil {
+			apiError(c, http.StatusBadRequest, "invalid_source", err.Error())
+			return
+		}
+		total += n
+		added = append(added, *src)
+	}
+	s.Files.Invalidate(u.ID)
+	s.audit(c, "photo", "source_add", fmt.Sprintf("%d folders", len(added)), "添加照片来源", "ok")
+	created(c, gin.H{"sources": added, "indexed": total})
+}
+
+// photoSourcesDelete removes a registered source folder.
+func (s *Server) photoSourcesDelete(c *gin.Context) {
+	u := currentUser(c)
+	if err := s.Photos.DeleteSource(u, int64Param(c, "id")); err != nil {
+		apiError(c, http.StatusBadRequest, "delete_failed", err.Error())
+		return
+	}
+	ok(c, gin.H{"message": "已移除照片来源"})
+}
+
+// photoDuplicates returns groups of identical photos by SHA-256.
+func (s *Server) photoDuplicates(c *gin.Context) {
+	groups, err := s.Store.DuplicateGroups(currentUser(c).ID)
+	if err != nil {
+		apiError(c, http.StatusInternalServerError, "query_failed", "读取重复项目失败")
+		return
+	}
+	for gi := range groups {
+		for pi := range groups[gi].Photos {
+			media.Decorate(&groups[gi].Photos[pi])
+		}
+	}
+	ok(c, groups)
+}
+
+// photoDuplicatesMerge keeps the best copy in every duplicate group.
+func (s *Server) photoDuplicatesMerge(c *gin.Context) {
+	u := currentUser(c)
+	removed, err := s.Store.MergeDuplicateGroups(u.ID)
+	if err != nil {
+		apiError(c, http.StatusInternalServerError, "merge_failed", err.Error())
+		return
+	}
+	s.Files.Invalidate(u.ID)
+	s.audit(c, "photo", "dedupe", fmt.Sprintf("%d", removed), "合并重复照片", "ok")
+	ok(c, gin.H{"removed": removed})
 }
 
 // photoShare creates a public link for a photo.

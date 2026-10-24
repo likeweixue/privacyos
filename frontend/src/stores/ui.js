@@ -10,13 +10,23 @@ export const useUiStore = defineStore('ui', {
     theme: localStorage.getItem(THEME_KEY) || 'light',
     lang: localStorage.getItem(LANG_KEY) || 'zh-CN',
     sidebarCollapsed: localStorage.getItem(SIDEBAR_KEY) === '1',
-    inboxOpen: false
+    inboxOpen: false,
+    appearance: { windowRadius: 0, wallpaperUrl: '', loginWallpaper: false }
   }),
   actions: {
     applyTheme() {
       const html = document.documentElement
       html.classList.toggle('dark', this.theme === 'dark')
       html.classList.toggle('light', this.theme === 'light')
+    },
+    applyAppearance(data = {}) {
+      const radius = Math.max(0, Math.min(24, Number(data.window_radius ?? this.appearance.windowRadius ?? 0)))
+      this.appearance = {
+        windowRadius: radius,
+        wallpaperUrl: data.wallpaper_url !== undefined ? data.wallpaper_url : this.appearance.wallpaperUrl,
+        loginWallpaper: data.login_wallpaper !== undefined ? !!data.login_wallpaper : this.appearance.loginWallpaper
+      }
+      document.documentElement.style.setProperty('--pos-window-radius', `${radius}px`)
     },
     setTheme(theme) {
       this.theme = theme === 'light' ? 'light' : 'dark'

@@ -96,6 +96,7 @@ func (s *Server) buildRouter() *gin.Engine {
 	api := r.Group("/api/v1")
 	{
 		api.GET("/system/public", s.publicInfo)
+		api.GET("/system/wallpaper", s.publicWallpaper)
 		api.POST("/auth/login", s.loginLimiter(), s.login)
 		api.POST("/auth/refresh", s.refresh)
 
@@ -155,6 +156,11 @@ func (s *Server) buildRouter() *gin.Engine {
 			p.GET("", s.listPhotos)
 			p.GET("/timeline", s.photoTimeline)
 			p.GET("/map", s.photoMap)
+			p.GET("/sources", s.photoSourcesList)
+			p.POST("/sources", s.photoSourcesAdd)
+			p.DELETE("/sources/:id", s.photoSourcesDelete)
+			p.GET("/duplicates", s.photoDuplicates)
+			p.POST("/duplicates/merge", s.photoDuplicatesMerge)
 			p.GET("/albums", s.albumsList)
 			p.POST("/albums", s.albumCreate)
 			p.GET("/albums/:id", s.albumGet)
@@ -165,6 +171,9 @@ func (s *Server) buildRouter() *gin.Engine {
 			p.POST("/scan", s.photoScan)
 			p.GET("/:id", s.getPhoto)
 			p.DELETE("/:id", s.photoDelete)
+			p.POST("/:id/favorite", s.photoFavorite)
+			p.POST("/:id/restore", s.photoRestore)
+			p.DELETE("/:id/permanent", s.photoPurge)
 			p.GET("/:id/file", s.photoFile)
 			p.GET("/:id/thumb", s.photoThumb)
 			p.POST("/:id/share", s.photoShare)
@@ -299,6 +308,8 @@ func (s *Server) buildRouter() *gin.Engine {
 				adm.GET("/system/destroy/policy", s.destroyPolicyGet)
 				adm.PUT("/system/destroy/policy", s.destroyPolicyPut)
 				adm.POST("/notifications/test", s.notificationTest)
+				adm.POST("/system/wallpaper", s.uploadWallpaper)
+				adm.DELETE("/system/wallpaper", s.deleteWallpaper)
 				adm.GET("/system/audit/export", s.logsAuditExport)
 			}
 		}
@@ -335,6 +346,11 @@ func (s *Server) publicInfo(c *gin.Context) {
 		"version": s.Cfg.Version, "edition": s.Cfg.Edition, "edition_name": s.Cfg.EditionName(),
 		"hostname": info.Hostname, "ips": info.IPs, "dev": s.Cfg.Dev,
 		"https": st.HTTPS.Enabled,
+		"appearance": gin.H{
+			"window_radius":   st.Appearance.WindowRadius,
+			"wallpaper_url":   wallpaperURL(st),
+			"login_wallpaper": st.Appearance.LoginWallpaper,
+		},
 	}})
 }
 

@@ -69,7 +69,7 @@ backend/
     └── version/
 frontend/
 ├── src/api/index.js                 所有 REST 客户端 + token 刷新
-├── src/stores/{auth,ui,desktop}.js  Pinia（auth / 主题语言 / 窗口管理）
+├── src/stores/{auth,ui,desktop,layout,tasks}.js  Pinia（认证/主题/窗口/边栏/任务）
 ├── src/desktop/                    桌面壳：Desktop / WindowFrame / Taskbar / StartMenu
 ├── src/apps.js                     窗口组件与导航注册表（分组、图标、尺寸）
 ├── src/views/*.vue                  12 个应用页面 + 登录 + 公开分享 + 404

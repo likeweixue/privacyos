@@ -1,12 +1,13 @@
 <template>
   <div class="pos-page">
     <PageHeader :title="t('settings.title')" :subtitle="t('settings.subtitle')">
+      <el-button :icon="Operation" @click="layout.toggle('settings')">{{ t('settings.sidebar') }}</el-button>
       <el-tag effect="plain" :type="auth.pro ? 'warning' : 'info'">{{ auth.editionName }}</el-tag>
       <el-tag effect="plain">v{{ auth.version }}</el-tag>
     </PageHeader>
 
-    <div class="settings-layout">
-      <aside class="pos-panel side-nav">
+    <div class="settings-layout" :style="{ '--settings-sidebar-width': layout.sidebars.settings.visible ? `${layout.sidebars.settings.width}px` : '0px' }">
+      <aside v-show="layout.sidebars.settings.visible" class="pos-panel side-nav">
         <button
           v-for="item in tabs"
           :key="item.name"
@@ -18,6 +19,12 @@
           <el-icon :size="16"><component :is="item.icon" /></el-icon>
           <span>{{ t(item.label) }}</span>
         </button>
+        <SidebarResizer
+          v-if="layout.sidebars.settings.visible"
+          side="left"
+          :width="layout.sidebars.settings.width"
+          @resize="(w) => layout.setWidth('settings', w)"
+        />
       </aside>
 
       <section class="pos-panel main-panel" v-loading="loading">
@@ -114,6 +121,56 @@
             </div>
             <div v-else class="pos-hint">{{ t('common.loading') }}</div>
           </div>
+        </div>
+
+
+        <!-- appearance -->
+        <div v-else-if="tab === 'appearance'" class="section">
+          <h3>{{ t('settings.tabs.appearance') }}</h3>
+          <div class="grid-2">
+            <div class="sub-card">
+              <h4>{{ t('settings.appearance.window') }}</h4>
+              <p class="pos-hint">{{ t('settings.appearance.windowHint') }}</p>
+              <div class="radius-row">
+                <el-slider
+                  v-model="appearance.window_radius"
+                  :min="0"
+                  :max="24"
+                  :step="1"
+                  :show-tooltip="false"
+                  @input="previewRadius"
+                />
+                <span class="radius-value">{{ appearance.window_radius }} px</span>
+              </div>
+              <div class="radius-preview">
+                <div class="preview-window" :style="{ borderRadius: `${appearance.window_radius}px` }">
+                  <div class="preview-title" :style="{ borderTopLeftRadius: `${appearance.window_radius}px`, borderTopRightRadius: `${appearance.window_radius}px` }">
+                    <span /><span /><span />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="sub-card">
+              <h4>{{ t('settings.appearance.wallpaper') }}</h4>
+              <p class="pos-hint">{{ t('settings.appearance.wallpaperHint') }}</p>
+              <div class="wallpaper-preview">
+                <img v-if="wallpaperPreview" :src="wallpaperPreview" alt="" />
+                <div v-else class="wallpaper-empty"><el-icon :size="28"><Picture /></el-icon></div>
+              </div>
+              <div class="row" style="margin-top: 10px">
+                <el-button :loading="wallpaperBusy" @click="wallpaperInput?.click()">{{ t('settings.appearance.chooseWallpaper') }}</el-button>
+                <el-button v-if="wallpaperPreview" type="danger" plain :loading="wallpaperBusy" @click="removeWallpaper">{{ t('settings.appearance.removeWallpaper') }}</el-button>
+              </div>
+              <el-checkbox v-model="appearance.login_wallpaper" style="margin-top: 8px">
+                {{ t('settings.appearance.loginWallpaper') }}
+              </el-checkbox>
+              <div style="margin-top: 10px">
+                <el-button type="primary" :loading="busy" @click="saveAppearance">{{ t('common.save') }}</el-button>
+              </div>
+            </div>
+          </div>
+          <input ref="wallpaperInput" type="file" accept="image/jpeg,image/png,image/webp" hidden @change="onWallpaperPicked" />
         </div>
 
         <!-- account -->
@@ -512,22 +569,27 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Operation } from '@element-plus/icons-vue'
 import {
   Setting, User, Lock, Bell, Download, Delete, Info, Refresh, Key, Upload
 } from '@element-plus/icons-vue'
 import QRCode from 'qrcode'
 import PageHeader from '../components/PageHeader.vue'
+import SidebarResizer from '../components/SidebarResizer.vue'
 import { api, apiURL, errorMessage } from '../api'
 import { useAuthStore } from '../stores/auth'
 import { useUiStore } from '../stores/ui'
+import { useLayoutStore } from '../stores/layout'
 import { formatBytes, formatDate, formatUptime } from '../utils/format'
 
 const { t } = useI18n()
 const auth = useAuthStore()
 const ui = useUiStore()
+const layout = useLayoutStore()
 
 const tabs = [
   { name: 'general', label: 'settings.tabs.general', icon: 'Setting' },
+  { name: 'appearance', label: 'settings.tabs.appearance', icon: 'Brush' },
   { name: 'account', label: 'settings.tabs.account', icon: 'User' },
   { name: 'security', label: 'settings.tabs.security', icon: 'Lock' },
   { name: 'notifications', label: 'settings.tabs.notifications', icon: 'Bell' },
@@ -563,6 +625,10 @@ const notifications = reactive({})
 const testResults = ref([])
 const backup = reactive({ auto: false, keep: 7, schedule: 'daily' })
 const destroy = reactive({})
+const appearance = reactive({ window_radius: 0, login_wallpaper: false })
+const wallpaperPreview = ref('')
+const wallpaperInput = ref(null)
+const wallpaperBusy = ref(false)
 const vaultInfo = ref({ vaults: [], available: false })
 const vaultDialog = ref(false)
 const vaultSize = ref(50)
@@ -583,6 +649,9 @@ function fillForms() {
   Object.assign(notifications, s.notifications || {})
   Object.assign(backup, s.backup || {})
   Object.assign(destroy, s.destroy || {})
+  appearance.window_radius = Number(s.appearance?.window_radius || 0)
+  appearance.login_wallpaper = !!s.appearance?.login_wallpaper
+  wallpaperPreview.value = s.appearance?.wallpaper ? `/api/v1/system/wallpaper?v=${encodeURIComponent(s.appearance.wallpaper)}` : ''
   certDomain.value = s.https?.domain || info.value.hostname || ''
 }
 
@@ -959,13 +1028,75 @@ async function applyUpdates() {
   }
 }
 
+function previewRadius(value) {
+  ui.applyAppearance({ window_radius: value })
+}
+async function saveAppearance() {
+  busy.value = true
+  try {
+    await api.settings.put('appearance', {
+      window_radius: appearance.window_radius,
+      login_wallpaper: appearance.login_wallpaper
+    })
+    ui.applyAppearance({
+      window_radius: appearance.window_radius,
+      login_wallpaper: appearance.login_wallpaper,
+      wallpaper_url: wallpaperPreview.value
+    })
+    ElMessage.success(t('common.saved'))
+  } catch (error) {
+    ElMessage.error(errorMessage(error))
+  } finally {
+    busy.value = false
+  }
+}
+async function onWallpaperPicked(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  wallpaperBusy.value = true
+  try {
+    const form = new FormData()
+    form.append('file', file, file.name)
+    form.append('login_wallpaper', appearance.login_wallpaper ? '1' : '0')
+    const payload = await api.settings.uploadWallpaper(form)
+    wallpaperPreview.value = payload.wallpaper_url
+    appearance.window_radius = payload.appearance?.window_radius ?? appearance.window_radius
+    appearance.login_wallpaper = !!payload.appearance?.login_wallpaper
+    ui.applyAppearance({
+      window_radius: appearance.window_radius,
+      login_wallpaper: appearance.login_wallpaper,
+      wallpaper_url: payload.wallpaper_url
+    })
+    ElMessage.success(t('settings.appearance.wallpaperSaved'))
+  } catch (error) {
+    ElMessage.error(errorMessage(error))
+  } finally {
+    wallpaperBusy.value = false
+  }
+}
+async function removeWallpaper() {
+  wallpaperBusy.value = true
+  try {
+    await api.settings.deleteWallpaper()
+    wallpaperPreview.value = ''
+    appearance.login_wallpaper = false
+    ui.applyAppearance({ wallpaper_url: '', login_wallpaper: false })
+    ElMessage.success(t('settings.appearance.wallpaperRemoved'))
+  } catch (error) {
+    ElMessage.error(errorMessage(error))
+  } finally {
+    wallpaperBusy.value = false
+  }
+}
+
 onMounted(loadAll)
 </script>
 
 <style scoped>
 .settings-layout {
   display: grid;
-  grid-template-columns: 206px minmax(0, 1fr);
+  grid-template-columns: var(--settings-sidebar-width, 206px) minmax(0, 1fr);
   gap: 0;
   align-items: stretch;
   border: 1px solid var(--pos-border);
@@ -973,6 +1104,7 @@ onMounted(loadAll)
   min-width: 0;
 }
 .side-nav {
+  position: relative;
   padding: 8px;
   display: flex;
   flex-direction: column;
@@ -1073,6 +1205,17 @@ onMounted(loadAll)
 .about h2 { margin: 0; letter-spacing: 1px; }
 .about-table { max-width: 620px; text-align: left; margin: 10px 0; }
 .slogan { color: var(--pos-accent); font-size: 13px; margin: 6px 0 0; }
+
+.radius-row { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
+.radius-row .el-slider { flex: 1; }
+.radius-value { width: 46px; text-align: right; font-size: 12px; color: var(--pos-muted); }
+.radius-preview { margin-top: 16px; padding: 16px; background: var(--pos-bg); border: 1px solid var(--pos-border); }
+.preview-window { width: 100%; height: 110px; background: var(--pos-panel); border: 1px solid var(--pos-border-strong); overflow: hidden; }
+.preview-title { height: 26px; display: flex; align-items: center; gap: 4px; padding: 0 8px; background: var(--pos-panel-2); border-bottom: 1px solid var(--pos-border); }
+.preview-title span { width: 6px; height: 6px; border-radius: 50%; background: var(--pos-border-strong); }
+.wallpaper-preview { height: 150px; border: 1px solid var(--pos-border); background: var(--pos-panel-2); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.wallpaper-preview img { width: 100%; height: 100%; object-fit: cover; }
+.wallpaper-empty { color: var(--pos-muted); }
 @media (max-width: 960px) {
   .settings-layout { grid-template-columns: minmax(0, 1fr); }
   .side-nav { flex-direction: row; overflow-x: auto; position: static; border-right: none; border-bottom: 1px solid var(--pos-border); }

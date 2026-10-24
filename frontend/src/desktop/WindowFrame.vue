@@ -115,7 +115,7 @@ function startResize(event) {
   min-height: 300px;
   background: var(--pos-panel);
   border: 1px solid var(--pos-border-strong);
-  border-radius: 3px;
+  border-radius: var(--pos-window-radius, 0px);
   box-shadow: 0 14px 40px rgba(20, 32, 44, 0.16), 0 2px 6px rgba(20, 32, 44, 0.08);
   overflow: hidden;
   pointer-events: auto;

@@ -25,6 +25,17 @@ PrivacyOS 不是"又一个网盘界面"，而是一套**可安装的操作系统
 | 影视中心（演示数据） | 移动端桌面 |
 | --- | --- |
 | ![影视](docs/images/movies.png) | ![移动端](docs/images/desktop-mobile.png) |
+| 相册边栏 / 全屏灯箱 | 相册数据来源 |
+| --- | --- |
+| ![相册](docs/images/photos.png) | ![数据来源](docs/images/photos-sources.png) |
+
+| 文件预览边栏 | 文件分栏视图 |
+| --- | --- |
+| ![文件预览](docs/images/files-preview.png) | ![分栏](docs/images/files-columns.png) |
+
+| 个性化（圆角 / 壁纸） | 相册原始比例 |
+| --- | --- |
+| ![个性化](docs/images/appearance.png) | ![原始比例](docs/images/photos-original.png) |
 
 安装引导（Flarum 风格，访问 `/install` 体验）：
 
@@ -40,9 +51,9 @@ PrivacyOS 不是"又一个网盘界面"，而是一套**可安装的操作系统
 
 | 模块 | 能力 |
 | --- | --- |
-| 桌面环境 | 任务栏、开始菜单、桌面图标、多窗口/多实例、拖动缩放、最大化、浅/深主题、移动端 |
-| 文件管理 | 目录树、上传/下载、新建/重命名/移动/复制、压缩/解压、回收站、配额、分享链接、WebDAV |
-| 相册 | EXIF 自动归档 `年/月/日`、时间轴、缩略图、GPS 坐标视图、相册分类、批量操作、分享 |
+| 桌面环境 | 任务栏、开始菜单、桌面图标、多窗口/多实例、拖动缩放、最大化、任务面板、浅/深主题、移动端 |
+| 文件管理 | 目录树、列表/网格/**分栏**、预览边栏、空格快速预览、框选、批量重命名、移动/复制/压缩、回收站、配额、分享、WebDAV |
+| 相册 | 固定/原始比例、全屏灯箱、图库侧栏、日期分组、收藏/已删除、重复项合并、数据来源、EXIF 归档 `<用户>/相册/YYYY/MM/DD`、分享 |
 | 影视中心 | 媒体库扫描、ffprobe 元数据、TMDB 刮削、海报墙、详情、Range 流式播放、外挂字幕、倍速 |
 | Docker | 容器启停/日志/资源占用、镜像拉取、Compose 项目部署与日志 |
 | 存储管理 | 磁盘/SMART 健康、mdadm RAID 池创建/挂载/扩容、挂载点用量 |
@@ -50,7 +61,7 @@ PrivacyOS 不是"又一个网盘界面"，而是一套**可安装的操作系统
 | 应用中心 | qBittorrent / Jellyfin / Nextcloud / AdGuard Home / Alist / Syncthing / Uptime Kuma 一键部署 |
 | 系统监控 | SSE 实时 CPU/内存/网络/磁盘 IO、进程管理、温度、运行时间 |
 | 日志审计 | 登录/操作/系统/销毁日志、筛选、CSV 导出、90 天保留 |
-| 系统设置 | 系统信息、更新、2FA、登录失败策略、HTTPS 自签名、通知（邮件/Telegram/Bark/Server酱）、备份恢复 |
+| 系统设置 | 系统信息、更新、2FA、登录失败策略、HTTPS、通知、备份恢复、**个性化**（窗口圆角、壁纸、登录页壁纸） |
 | 专业版专属 | 每用户 LUKS 加密卷、密钥销毁、自动销毁策略、30 天删除冷静期、配额不可见 |
 
 ### 普通版 vs 专业版
@@ -146,8 +157,8 @@ make verify
 产物：
 
 ```
-build/privacyos-1.2.1-amd64.iso
-build/privacyos-1.2.1-amd64.iso.sha256
+build/privacyos-1.3.0-amd64.iso
+build/privacyos-1.3.0-amd64.iso.sha256
 build/payload/                     # 安装载荷
 build/LUKS-PASSPHRASE.txt          # 专业版安装时的 LUKS 口令（务必保存）
 build/initial-admin-password       # 首次安装的管理员密码

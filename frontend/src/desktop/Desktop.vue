@@ -5,7 +5,8 @@
     @click="onRootClick"
     @contextmenu.prevent="onRootContext"
   >
-    <div class="wallpaper" />
+    <img v-if="ui.appearance.wallpaperUrl" class="wallpaper-image" :src="ui.appearance.wallpaperUrl" alt="" />
+    <div class="wallpaper" :class="{ 'has-image': ui.appearance.wallpaperUrl }" />
     <div class="wallpaper-dots" />
 
     <div class="desktop-area">
@@ -283,6 +284,7 @@ async function logout() {
   color: var(--pos-text);
   user-select: none;
 }
+.wallpaper-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .wallpaper {
   position: absolute;
   inset: 0;
@@ -298,6 +300,7 @@ async function logout() {
   opacity: 0.35;
   mask-image: linear-gradient(120deg, #000 0%, transparent 72%);
 }
+.wallpaper.has-image { background: linear-gradient(150deg, rgba(5, 12, 18, 0.18), rgba(5, 12, 18, 0.32)); }
 html.dark .wallpaper {
   background:
     radial-gradient(900px 600px at 85% 10%, rgba(45, 212, 191, 0.07), transparent 60%),

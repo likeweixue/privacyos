@@ -40,7 +40,7 @@ func (s *Store) seedDemo(cfg *config.Config) error {
 	}
 
 	home := filepath.Join(cfg.DataDir, "users", u.Username)
-	photoRoot := filepath.Join(cfg.DataDir, "photos", u.Username)
+	photoRoot := filepath.Join(home, "相册")
 	_ = os.MkdirAll(home, 0o700)
 	_ = os.MkdirAll(photoRoot, 0o700)
 	_ = os.MkdirAll(filepath.Join(cfg.DataDir, "movies", u.Username), 0o700)
@@ -63,9 +63,9 @@ func writeDemoFiles(home string) {
 			"2. 所有文件都保存在 /data/users/<用户名>。\n" +
 			"3. 专业版启用 Linux 权限隔离，管理员也无法读取其他用户文件。\n",
 		"Documents/家庭数据备份说明.md": "# 家庭数据备份\n\n- 每周日 03:00 自动备份到 /data/backups\n- 保留最近 4 份快照\n- 备份文件使用 AES-256 加密\n",
-		"Documents/隐私清单.txt": "隐私检查清单\n\n[ ] 开启双重认证\n[ ] 修改默认密码\n[ ] 配置 HTTPS\n[ ] 检查共享目录权限\n[ ] 设置磁盘 SMART 告警\n",
-		"Projects/roadmap.md": "# PrivacyOS 路线图\n\n- [x] 基础系统与 Web 面板\n- [x] 文件与用户隔离\n- [ ] 相册人脸识别\n- [ ] 影视转码\n",
-		"Media/readme.txt": "把影片放入 /data/movies/<用户名> 后，在影视中心点击“扫描媒体库”。\n",
+		"Documents/隐私清单.txt":    "隐私检查清单\n\n[ ] 开启双重认证\n[ ] 修改默认密码\n[ ] 配置 HTTPS\n[ ] 检查共享目录权限\n[ ] 设置磁盘 SMART 告警\n",
+		"Projects/roadmap.md":   "# PrivacyOS 路线图\n\n- [x] 基础系统与 Web 面板\n- [x] 文件与用户隔离\n- [ ] 相册人脸识别\n- [ ] 影视转码\n",
+		"Media/readme.txt":      "把影片放入 /data/movies/<用户名> 后，在影视中心点击“扫描媒体库”。\n",
 	}
 	for rel, body := range files {
 		abs := filepath.Join(home, rel)
@@ -171,11 +171,11 @@ func (s *Store) seedDemoMovies(cfg *config.Config, u *User) error {
 
 func (s *Store) seedDemoActivity(u *User) {
 	entries := []struct {
-		offset  time.Duration
-		cat     string
-		action  string
-		target  string
-		detail  string
+		offset time.Duration
+		cat    string
+		action string
+		target string
+		detail string
 	}{
 		{2 * time.Minute, "auth", "login", "-", "登录成功"},
 		{38 * time.Minute, "file", "upload", "Documents/隐私清单.txt", "上传文件"},
@@ -266,4 +266,3 @@ func wrapLabel(s string, width int) []string {
 	}
 	return out
 }
-

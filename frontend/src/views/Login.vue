@@ -1,6 +1,6 @@
 <template>
   <div class="login-page">
-    <section class="hero">
+    <section class="hero" :style="heroStyle">
       <div class="hero-inner">
         <div class="brand">
           <img src="/logo.svg" alt="PrivacyOS" />
@@ -95,7 +95,7 @@
         <footer class="login-foot">
           <router-link class="installer-link" :to="{ name: 'install' }">{{ t('installer.title') }}</router-link>
           <span class="dot">·</span>
-          <span>v{{ info.version || '1.2.1' }}</span>
+          <span>v{{ info.version || '1.3.0' }}</span>
           <span class="dot">·</span>
           <a :href="info.website || '#'" target="_blank" rel="noreferrer">{{ info.website || 'privacyos' }}</a>
           <span class="spacer" />
@@ -122,12 +122,21 @@ const router = useRouter()
 const auth = useAuthStore()
 const ui = useUiStore()
 
-const info = ref({ name: 'PrivacyOS', version: '1.2.1', edition: 'normal', website: 'privacyos.local', dev: false })
+const info = ref({ name: 'PrivacyOS', version: '1.3.0', edition: 'normal', website: 'privacyos.local', dev: false })
 const form = ref({ username: '', password: '', totp: '' })
 const needTotp = ref(false)
 const retryAfter = ref(0)
 let timer = null
 
+const heroStyle = computed(() => {
+  const a = info.value.appearance || {}
+  if (!a.login_wallpaper || !a.wallpaper_url) return {}
+  return {
+    backgroundImage: `linear-gradient(160deg, rgba(5,12,18,.72), rgba(5,12,18,.55)), url("${a.wallpaper_url}")`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center'
+  }
+})
 const editionLabel = computed(() => {
   const normal = t('app.normal')
   const pro = t('app.pro')
@@ -138,6 +147,7 @@ onMounted(async () => {
   ui.applyTheme()
   try {
     info.value = await api.public.info()
+    ui.applyAppearance(info.value.appearance || {})
     document.title = `${info.value.name || 'PrivacyOS'} · ${t('login.title')}`
   } catch (error) {
     // Keep defaults when the API is unreachable.

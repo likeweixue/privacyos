@@ -13,6 +13,7 @@ import enUs from 'element-plus/es/locale/lang/en'
 import { useUiStore } from './stores/ui'
 import { useAuthStore } from './stores/auth'
 import { useDesktopStore } from './stores/desktop'
+import { api } from './api'
 import { useI18n } from 'vue-i18n'
 
 const ui = useUiStore()
@@ -25,6 +26,7 @@ const epLocale = computed(() => (ui.lang === 'en-US' ? enUs : zhCn))
 
 onMounted(() => {
   ui.applyTheme()
+  api.public.info().then((info) => ui.applyAppearance(info.appearance || {})).catch(() => {})
   window.addEventListener('pos:logout', () => {
     auth.user = null
     desktop.closeAll()

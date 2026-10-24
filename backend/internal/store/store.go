@@ -95,6 +95,10 @@ func (s *Store) migrate() error {
 			tx.Rollback()
 			return fmt.Errorf("apply migration %s: %w", name, err)
 		}
+		if _, err := tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", version)); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("record migration %s: %w", name, err)
+		}
 		if err := tx.Commit(); err != nil {
 			return fmt.Errorf("commit migration %s: %w", name, err)
 		}

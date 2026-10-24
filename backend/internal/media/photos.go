@@ -40,22 +40,22 @@ func NewPhotos(cfg *config.Config, st *store.Store) *Photos {
 	return &Photos{Cfg: cfg, Store: st}
 }
 
-// Root returns /data/photos/<user>.
+// Root returns the user's visible album folder: <home>/相册.
 func (s *Photos) Root(u *store.User) string {
-	return filepath.Join(s.Cfg.DataDir, "photos", u.Username)
+	return filepath.Join(s.Cfg.DataDir, "users", u.Username, "相册")
 }
 
 // TimelineGroup groups photos by year and month.
 type TimelineGroup struct {
-	Year   int            `json:"year"`
-	Count  int            `json:"count"`
-	Months []MonthGroup   `json:"months"`
+	Year   int          `json:"year"`
+	Count  int          `json:"count"`
+	Months []MonthGroup `json:"months"`
 }
 
 // MonthGroup is a month bucket.
 type MonthGroup struct {
-	Month int              `json:"month"`
-	Count int              `json:"count"`
+	Month int               `json:"month"`
+	Count int               `json:"count"`
 	Days  []store.DateCount `json:"days"`
 }
 
@@ -108,24 +108,36 @@ func (s *Photos) Scan(ctx context.Context, u *store.User, report func(int, strin
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return 0, err
 	}
-	var paths []string
-	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return nil
+	roots := []string{root}
+	if sources, err := s.Store.ListPhotoSources(u.ID); err == nil {
+		for _, src := range sources {
+			if abs := s.resolveSource(u, src.Path); abs != "" {
+				roots = append(roots, abs)
+			}
 		}
-		if d.IsDir() {
-			if strings.HasPrefix(d.Name(), ".") && path != root {
-				return filepath.SkipDir
+	}
+	var paths []string
+	seen := map[string]bool{}
+	for _, scanRoot := range roots {
+		err := filepath.WalkDir(scanRoot, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return nil
+			}
+			if d.IsDir() {
+				if strings.HasPrefix(d.Name(), ".") && path != scanRoot {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if files.IsImage(d.Name()) && !seen[path] {
+				seen[path] = true
+				paths = append(paths, path)
 			}
 			return nil
+		})
+		if err != nil {
+			continue
 		}
-		if files.IsImage(d.Name()) {
-			paths = append(paths, path)
-		}
-		return nil
-	})
-	if err != nil {
-		return 0, err
 	}
 	added := 0
 	for i, path := range paths {
@@ -218,7 +230,17 @@ func (s *Photos) SaveUpload(u *store.User, filename string, r io.Reader, now tim
 	return s.IndexFile(u, target)
 }
 
-// Delete removes a photo from disk and the index.
+// SoftDelete marks a photo as deleted, keeping the file for restore.
+func (s *Photos) SoftDelete(u *store.User, id int64) error {
+	return s.Store.SoftDeletePhoto(id, u.ID)
+}
+
+// Restore clears the soft-delete marker.
+func (s *Photos) Restore(u *store.User, id int64) error {
+	return s.Store.RestorePhoto(id, u.ID)
+}
+
+// Delete removes a photo from disk and the index permanently.
 func (s *Photos) Delete(u *store.User, id int64) error {
 	p, err := s.Store.GetPhoto(id, u.ID)
 	if err != nil {
@@ -231,6 +253,71 @@ func (s *Photos) Delete(u *store.User, id int64) error {
 		}
 	}
 	return s.Store.DeletePhotoRecord(id)
+}
+
+// Sources returns the user's extra source folders.
+func (s *Photos) Sources(u *store.User) ([]store.PhotoSource, error) {
+	return s.Store.ListPhotoSources(u.ID)
+}
+
+// AddSource validates a relative folder under the user's home, records it and
+// indexes every image below it. Returns the stored source and indexed count.
+func (s *Photos) AddSource(u *store.User, rel string) (*store.PhotoSource, int, error) {
+	abs := s.resolveSource(u, rel)
+	if abs == "" {
+		return nil, 0, fmt.Errorf("文件夹不在用户目录内")
+	}
+	info, err := os.Stat(abs)
+	if err != nil || !info.IsDir() {
+		return nil, 0, fmt.Errorf("文件夹不存在")
+	}
+	src, err := s.Store.AddPhotoSource(u.ID, filepath.ToSlash(filepath.Clean(rel)))
+	if err != nil {
+		return nil, 0, err
+	}
+	added := 0
+	_ = filepath.WalkDir(abs, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		if files.IsImage(d.Name()) {
+			if _, err := s.IndexFile(u, path); err == nil {
+				added++
+			}
+		}
+		return nil
+	})
+	return src, added, nil
+}
+
+// DeleteSource removes a source folder from the user's library.
+func (s *Photos) DeleteSource(u *store.User, id int64) error {
+	return s.Store.DeletePhotoSource(id, u.ID)
+}
+
+// resolveSource returns the absolute path for a relative folder under home.
+func (s *Photos) resolveSource(u *store.User, rel string) string {
+	home := filepath.Join(s.Cfg.DataDir, "users", u.Username)
+	if rel == "" || filepath.IsAbs(rel) {
+		return ""
+	}
+	clean := filepath.Clean(rel)
+	if clean == "." || clean == ".." || strings.HasPrefix(clean, ".."+string(os.PathSeparator)) {
+		return ""
+	}
+	abs := filepath.Join(home, clean)
+	relCheck, err := filepath.Rel(home, abs)
+	if err != nil || relCheck == ".." || strings.HasPrefix(relCheck, ".."+string(os.PathSeparator)) {
+		return ""
+	}
+	if real, err := filepath.EvalSymlinks(abs); err == nil {
+		abs = real
+		relCheck, err = filepath.Rel(home, abs)
+		if err != nil || relCheck == ".." || strings.HasPrefix(relCheck, ".."+string(os.PathSeparator)) {
+			return ""
+		}
+	}
+	return abs
 }
 
 // Thumb returns a JPEG thumbnail for a photo.

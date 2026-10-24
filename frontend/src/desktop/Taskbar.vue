@@ -29,6 +29,44 @@
     </div>
 
     <div class="Taskbar-right">
+      <el-dropdown trigger="click" @command="onLayoutCommand">
+        <button type="button" class="tray-button" :title="t('layout.title')">
+          <el-icon :size="16"><Operation /></el-icon>
+        </button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="files">{{ layout.sidebars.files.visible ? '✓ ' : '' }}{{ t('layout.files') }}</el-dropdown-item>
+            <el-dropdown-item command="photos">{{ layout.sidebars.photos.visible ? '✓ ' : '' }}{{ t('layout.photos') }}</el-dropdown-item>
+            <el-dropdown-item command="settings">{{ layout.sidebars.settings.visible ? '✓ ' : '' }}{{ t('layout.settings') }}</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+
+      <el-popover placement="top-end" :width="360" trigger="click">
+        <template #reference>
+          <button type="button" class="tray-button" :title="t('tasks.title')">
+            <el-badge :value="tasks.running" :hidden="!tasks.running" :max="99">
+              <el-icon :size="16"><Tickets /></el-icon>
+            </el-badge>
+          </button>
+        </template>
+        <div class="task-panel">
+          <div class="inbox-head">
+            <strong>{{ t('tasks.title') }}</strong>
+            <el-button link size="small" @click="tasks.clear()">{{ t('tasks.clear') }}</el-button>
+          </div>
+          <div v-if="!tasks.tasks.length" class="inbox-empty">{{ t('tasks.empty') }}</div>
+          <div v-for="task in tasks.tasks" :key="task.id" class="task-item">
+            <span class="task-status" :class="task.status" />
+            <div>
+              <strong>{{ task.label }}</strong>
+              <span>{{ task.detail }}</span>
+              <small>{{ task.status === 'running' ? t('tasks.running') : task.status === 'failed' ? t('tasks.failed') : t('tasks.done') }} · {{ formatRelative(task.createdAt) }}</small>
+            </div>
+          </div>
+        </div>
+      </el-popover>
+
       <el-popover v-model:visible="inboxOpen" placement="top-end" :width="380" trigger="click" @show="loadNotifications">
         <template #reference>
           <button type="button" class="tray-button" :title="t('notifications.title')">
@@ -123,11 +161,13 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { ArrowDown, Bell, Close, CopyDocument, Lock, Search, Setting, SwitchButton } from '@element-plus/icons-vue'
+import { ArrowDown, Bell, Close, CopyDocument, Lock, Operation, Search, Setting, SwitchButton, Tickets } from '@element-plus/icons-vue'
 import { api, errorMessage } from '../api'
 import { apps } from '../apps'
 import { useAuthStore } from '../stores/auth'
 import { useDesktopStore } from '../stores/desktop'
+import { useLayoutStore } from '../stores/layout'
+import { useTaskStore } from '../stores/tasks'
 import { useUiStore } from '../stores/ui'
 import { formatRelative } from '../utils/format'
 import StartMenu from './StartMenu.vue'
@@ -139,6 +179,8 @@ const { t } = useI18n()
 const router = useRouter()
 const auth = useAuthStore()
 const store = useDesktopStore()
+const layout = useLayoutStore()
+const tasks = useTaskStore()
 const ui = useUiStore()
 const inboxOpen = ref(false)
 const notifications = ref([])
@@ -212,6 +254,9 @@ function showDesktop() {
   store.startOpen = false
   store.minimizeAll()
   router.replace({ name: 'desktop' }).catch(() => {})
+}
+function onLayoutCommand(name) {
+  layout.toggle(name)
 }
 function onSessionCommand(command) {
   if (command === 'settings') emit('launch', 'settings')
@@ -432,4 +477,14 @@ async function removeNotification(id) {
   .clock { min-width: 48px; padding: 0 7px; }
   .task-search { display: none; }
 }
+
+.task-panel { max-height: 380px; overflow: auto; }
+.task-item { display: flex; gap: 8px; padding: 8px 2px; border-bottom: 1px solid var(--pos-border); }
+.task-item > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.task-item strong { font-size: 11.5px; }
+.task-item span { font-size: 10.5px; color: var(--pos-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-item small { font-size: 9.5px; color: var(--pos-muted); opacity: .8; }
+.task-status { width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; background: var(--pos-warning); flex-shrink: 0; }
+.task-status.done { background: var(--pos-success); }
+.task-status.failed { background: var(--pos-danger); }
 </style>

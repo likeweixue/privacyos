@@ -2,15 +2,24 @@
   <div class="pos-page files-page">
     <PageHeader :title="t('files.title')" :subtitle="t('files.subtitle')">
       <el-button :icon="CopyDocument" @click="openNewWindow">{{ t('desktop.newWindow') }}</el-button>
+      <el-button :icon="Operation" @click="layout.toggle('files')">{{ t('files.sidebar') }}</el-button>
       <el-radio-group v-model="viewMode" size="small">
         <el-radio-button value="list"><el-icon><List /></el-icon></el-radio-button>
         <el-radio-button value="grid"><el-icon><Grid /></el-icon></el-radio-button>
+        <el-radio-button value="columns"><el-icon><Operation /></el-icon></el-radio-button>
       </el-radio-group>
+      <el-button :icon="View" :type="previewVisible ? 'primary' : 'default'" @click="togglePreview">{{ t('files.previewSidebar') }}</el-button>
       <el-button :icon="Refresh" :loading="loading" @click="reload">{{ t('common.refresh') }}</el-button>
     </PageHeader>
 
-    <div class="files-layout">
-      <aside class="pos-panel tree-panel">
+    <div class="files-layout" :style="{ '--files-sidebar-width': layout.sidebars.files.visible ? `${layout.sidebars.files.width}px` : '0px', '--files-preview-width': previewVisible ? `${previewWidth}px` : '0px' }">
+      <aside v-show="layout.sidebars.files.visible" class="pos-panel tree-panel">
+        <SidebarResizer
+          v-if="layout.sidebars.files.visible"
+          side="left"
+          :width="layout.sidebars.files.width"
+          @resize="(w) => layout.setWidth('files', w)"
+        />
         <div class="tree-head">
           <span class="pos-card-title">{{ t('files.myFiles') }}</span>
           <el-tag v-if="canSeeAll" size="small" effect="plain" type="info">{{ t('users.admin') }}</el-tag>
@@ -81,6 +90,7 @@
           <el-button :icon="Rank" :disabled="!selection.length" @click="openMove('move')">{{ t('files.move') }}</el-button>
           <el-button :icon="CopyDocument" :disabled="!selection.length" @click="openMove('copy')">{{ t('files.copy') }}</el-button>
           <el-button :icon="Box" :disabled="!archivesSelected" @click="extractSelected">{{ t('files.extract') }}</el-button>
+          <el-button :icon="Rank" :disabled="!selection.length" @click="openBatchRename">{{ t('files.batchRename') }}</el-button>
           <el-button type="danger" plain :icon="Delete" :disabled="!selection.length" @click="removeSelected">
             {{ t('common.delete') }}
           </el-button>
@@ -157,7 +167,8 @@
             height="100%"
             @selection-change="onSelectionChange"
             @row-dblclick="openEntry"
-            @row-contextmenu="openContextMenu"
+            @row-click="onRowPreview"
+            @row-contextmenu="(row, column, event) => openContextMenu(event, row)"
             row-key="path"
           >
             <el-table-column type="selection" width="46" />
@@ -199,15 +210,52 @@
           </div>
         </template>
 
+        <!-- Column view -->
+        <template v-else-if="viewMode === 'columns'">
+          <div class="column-view">
+            <div class="column-list">
+              <button
+                v-for="item in sortedEntries"
+                :key="item.path"
+                type="button"
+                class="column-item"
+                :class="{ active: columnEntry?.path === item.path }"
+                @click="onColumnSelect(item)"
+                @dblclick="openEntry(item)"
+                @contextmenu.prevent="openContextMenu($event, item)"
+              >
+                <FileIcon :type="item.type" :name="item.name" :is-dir="item.is_dir" :size="19" />
+                <span>{{ item.name }}</span>
+              </button>
+            </div>
+            <div class="column-detail">
+              <template v-if="columnEntry">
+                <template v-if="columnEntry.is_dir">
+                  <div class="column-head">{{ columnEntry.name }}</div>
+                  <div v-if="columnLoading" class="pos-hint" style="padding: 16px">{{ t('common.loading') }}</div>
+                  <button v-for="child in columnEntries" :key="child.path" type="button" class="column-item" @click="onColumnSelect(child)" @dblclick="openEntry(child)">
+                    <FileIcon :type="child.type" :name="child.name" :is-dir="child.is_dir" :size="17" />
+                    <span>{{ child.name }}</span>
+                  </button>
+                  <div v-if="!columnEntries.length && !columnLoading" class="pos-hint" style="padding: 16px">{{ t('files.emptyFolder') }}</div>
+                </template>
+                <FilePreview v-else :entry="columnEntry" />
+              </template>
+              <div v-else class="pos-hint" style="padding: 20px">{{ t('files.columnHint') }}</div>
+            </div>
+          </div>
+        </template>
+
         <!-- Grid view -->
         <template v-else>
-          <div v-loading="loading" class="grid-view">
+          <div ref="fileGrid" v-loading="loading" class="grid-view" @mousedown.self="startBand">
             <div
               v-for="item in sortedEntries"
               :key="item.path"
               class="grid-card"
+              :data-path="item.path"
               :class="{ selected: selection.some((s) => s.path === item.path) }"
-              @click="toggleRow(item, $event)"
+              @click="onGridClick(item, $event)"
               @dblclick="openEntry(item)"
               @contextmenu.prevent="openContextMenu($event, item)"
             >
@@ -225,6 +273,7 @@
               <div class="grid-name">{{ item.name }}</div>
               <div class="grid-sub">{{ item.is_dir ? t('files.folder') : formatBytes(item.size) }}</div>
             </div>
+            <div v-if="band.active" class="rubber-band" :style="{ left: `${band.x}px`, top: `${band.y}px`, width: `${band.w}px`, height: `${band.h}px` }" />
             <div v-if="!sortedEntries.length && !loading" class="empty-wrap">
               <EmptyState :title="t('files.emptyFolder')" :description="t('files.emptyFolderHint')" icon="FolderOpened">
                 <el-button type="primary" :icon="Upload" @click="pickFiles">{{ t('files.uploadFile') }}</el-button>
@@ -239,11 +288,22 @@
           <span class="pos-hint">{{ formatBytes(usage.used_bytes || 0) }} / {{ usage.quota_bytes ? formatBytes(usage.quota_bytes) : t('common.unlimited') }}</span>
         </div>
       </section>
+
+      <aside v-if="previewVisible" class="preview-panel">
+        <SidebarResizer side="right" :width="previewWidth" @resize="setPreviewWidth" />
+        <div class="preview-panel-head">
+          <strong>{{ t('files.preview') }}</strong>
+          <button type="button" @click="previewVisible = false"><el-icon><Close /></el-icon></button>
+        </div>
+        <FilePreview v-if="previewEntry" :entry="previewEntry" />
+        <div v-else class="pos-hint" style="padding: 16px">{{ t('files.previewHint') }}</div>
+      </aside>
     </div>
 
     <input ref="fileInput" type="file" multiple hidden @change="onFilePicked" />
 
     <!-- context menu -->
+    <Teleport to="body">
     <div v-if="ctx.visible" class="context-menu" :style="{ left: `${ctx.x}px`, top: `${ctx.y}px` }">
       <button type="button" @click="ctxAction('open')">{{ t('common.open') }}</button>
       <button v-if="ctx.entry && !ctx.entry.is_dir" type="button" @click="ctxAction('download')">{{ t('common.download') }}</button>
@@ -252,6 +312,7 @@
       <button type="button" @click="ctxAction('details')">{{ t('common.details') }}</button>
       <button type="button" class="danger" @click="ctxAction('delete')">{{ t('common.delete') }}</button>
     </div>
+    </Teleport>
 
     <!-- details drawer -->
     <el-drawer v-model="detailsOpen" :title="t('files.detailsTitle')" size="380px">
@@ -341,6 +402,50 @@
     </el-dialog>
 
     <!-- upload progress -->
+
+    <Teleport to="body">
+      <div v-if="quicklookOpen && previewEntry" class="quicklook" @click.self="quicklookOpen = false">
+        <div class="quicklook-card">
+          <div class="quicklook-head">
+            <strong>{{ previewEntry.name }}</strong>
+            <button type="button" @click="quicklookOpen = false"><el-icon><Close /></el-icon></button>
+          </div>
+          <FilePreview :entry="previewEntry" />
+        </div>
+      </div>
+    </Teleport>
+
+    <el-dialog v-model="batchOpen" :title="t('files.batchRename')" width="560px">
+      <el-form label-position="top">
+        <el-form-item :label="t('files.renameMode')">
+          <el-radio-group v-model="batchForm.mode">
+            <el-radio-button value="prefix">{{ t('files.addPrefix') }}</el-radio-button>
+            <el-radio-button value="suffix">{{ t('files.addSuffix') }}</el-radio-button>
+            <el-radio-button value="insert">{{ t('files.insertAt') }}</el-radio-button>
+            <el-radio-button value="replace">{{ t('files.replaceText') }}</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <div class="batch-grid">
+          <el-form-item v-if="batchForm.mode === 'replace'" :label="t('files.findText')">
+            <el-input v-model="batchForm.find" />
+          </el-form-item>
+          <el-form-item :label="batchForm.mode === 'replace' ? t('files.replaceWith') : t('files.text')">
+            <el-input v-model="batchForm.text" />
+          </el-form-item>
+          <el-form-item v-if="batchForm.mode === 'insert'" :label="t('files.insertPosition')">
+            <el-input-number v-model="batchForm.position" :min="1" :max="120" />
+          </el-form-item>
+        </div>
+        <div class="batch-preview">
+          <div v-for="row in batchPreviewNames" :key="row.from" class="batch-row"><span>{{ row.from }}</span><span>→</span><strong>{{ row.to }}</strong></div>
+        </div>
+      </el-form>
+      <template #footer>
+        <el-button @click="batchOpen = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="busy" :disabled="!selection.length" @click="applyBatchRename">{{ t('files.applyRename') }}</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="uploadOpen" :title="t('files.uploadFile')" width="420px" :close-on-click-modal="false" :show-close="false">
       <div class="upload-box">
         <el-progress :percentage="uploadPercent" :status="uploadPercent >= 100 ? 'success' : undefined" />
@@ -356,19 +461,25 @@ import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Refresh, Upload, FolderAdd, Download, Delete, Share, Rank, CopyDocument, Box,
-  Search, List, Grid, MoreFilled, HomeFilled, Folder, Document, UploadFilled, ArrowLeft
+  Search, List, Grid, MoreFilled, HomeFilled, Folder, Document, UploadFilled, ArrowLeft, Close
 } from '@element-plus/icons-vue'
 import PageHeader from '../components/PageHeader.vue'
 import FileIcon from '../components/FileIcon.vue'
 import EmptyState from '../components/EmptyState.vue'
+import SidebarResizer from '../components/SidebarResizer.vue'
+import FilePreview from '../components/FilePreview.vue'
 import { api, apiURL, errorMessage } from '../api'
 import { useUiStore } from '../stores/ui'
 import { useDesktopStore } from '../stores/desktop'
+import { useLayoutStore } from '../stores/layout'
+import { useTaskStore } from '../stores/tasks'
 import { formatBytes, formatDate, fileExt } from '../utils/format'
 
 const { t } = useI18n()
 const ui = useUiStore()
 const desktop = useDesktopStore()
+const layout = useLayoutStore()
+const tasks = useTaskStore()
 
 const treeRef = ref(null)
 const treeKey = ref(0)
@@ -403,6 +514,17 @@ const shareForm = reactive({ password: '', hours: 0, maxDownloads: 0 })
 const shareLink = ref('')
 const uploadOpen = ref(false)
 const uploadPercent = ref(0)
+const previewVisible = ref(localStorage.getItem('pos_files_preview') === '1')
+const previewWidth = ref(Number(localStorage.getItem('pos_files_preview_width') || 300))
+const previewEntry = ref(null)
+const quicklookOpen = ref(false)
+const columnEntry = ref(null)
+const columnEntries = ref([])
+const columnLoading = ref(false)
+const batchOpen = ref(false)
+const batchForm = reactive({ mode: 'prefix', text: '', position: 1, find: '', replace: '' })
+const fileGrid = ref(null)
+const band = reactive({ active: false, x: 0, y: 0, w: 0, h: 0, startX: 0, startY: 0, moved: false })
 const uploadLabel = ref('')
 const ctx = reactive({ visible: false, x: 0, y: 0, entry: null })
 let searchTimer = null
@@ -523,6 +645,136 @@ function openTrash() {
 
 function onSelectionChange(rows) {
   selection.value = rows
+  if (rows.length === 1) previewEntry.value = rows[0]
+  else if (!rows.length) previewEntry.value = null
+}
+
+function togglePreview() {
+  previewVisible.value = !previewVisible.value
+  localStorage.setItem('pos_files_preview', previewVisible.value ? '1' : '0')
+}
+function setPreviewWidth(w) {
+  previewWidth.value = Math.max(220, Math.min(520, Math.round(w)))
+  localStorage.setItem('pos_files_preview_width', String(previewWidth.value))
+}
+function onRowPreview(row) {
+  previewEntry.value = row
+}
+function onGridClick(item, event) {
+  toggleRow(item, event)
+  previewEntry.value = item
+}
+async function onColumnSelect(item) {
+  columnEntry.value = item
+  previewEntry.value = item
+  columnEntries.value = []
+  if (!item.is_dir) return
+  columnLoading.value = true
+  try {
+    const payload = await api.files.list({ path: item.path, ...scopeParams() })
+    columnEntries.value = payload.listing?.entries || []
+  } catch (error) {
+    columnEntries.value = []
+  } finally {
+    columnLoading.value = false
+  }
+}
+function openBatchRename() {
+  if (!selection.value.length) return
+  batchForm.mode = 'prefix'
+  batchForm.text = ''
+  batchForm.position = 1
+  batchForm.find = ''
+  batchOpen.value = true
+}
+function buildBatchName(name) {
+  const dot = name.lastIndexOf('.')
+  const ext = dot > 0 ? name.slice(dot) : ''
+  const base = dot > 0 ? name.slice(0, dot) : name
+  if (batchForm.mode === 'prefix') return batchForm.text + name
+  if (batchForm.mode === 'suffix') return base + batchForm.text + ext
+  if (batchForm.mode === 'insert') {
+    const pos = Math.max(1, Math.min(name.length + 1, Number(batchForm.position) || 1)) - 1
+    return name.slice(0, pos) + batchForm.text + name.slice(pos)
+  }
+  if (batchForm.mode === 'replace') {
+    if (!batchForm.find) return name
+    return name.split(batchForm.find).join(batchForm.replace)
+  }
+  return name
+}
+const batchPreviewNames = computed(() => selection.value.map((item) => ({ from: item.name, to: buildBatchName(item.name) })))
+async function applyBatchRename() {
+  if (!selection.value.length) return
+  if (batchForm.mode === 'replace' && !batchForm.find) {
+    ElMessage.warning(t('files.findText'))
+    return
+  }
+  busy.value = true
+  let done = 0
+  const task = tasks.add(t('files.batchRename'), t('files.selected', { n: selection.value.length }))
+  try {
+    for (const item of selection.value) {
+      const name = buildBatchName(item.name)
+      if (name && name !== item.name) {
+        await api.files.rename({ path: item.path, name })
+        done++
+      }
+    }
+    tasks.finish(task)
+    ElMessage.success(t('files.batchRenameDone', { n: done }))
+    batchOpen.value = false
+    await load(currentPath.value)
+  } catch (error) {
+    tasks.finish(task, 'failed', errorMessage(error))
+    ElMessage.error(errorMessage(error))
+  } finally {
+    busy.value = false
+  }
+}
+function startBand(event) {
+  if (event.button !== 0) return
+  band.active = true
+  band.moved = false
+  band.startX = event.clientX
+  band.startY = event.clientY
+  band.x = event.clientX
+  band.y = event.clientY
+  band.w = 0
+  band.h = 0
+  const onMove = (e) => {
+    const x = Math.min(band.startX, e.clientX)
+    const y = Math.min(band.startY, e.clientY)
+    band.x = x
+    band.y = y
+    band.w = Math.abs(e.clientX - band.startX)
+    band.h = Math.abs(e.clientY - band.startY)
+    if (band.w > 4 || band.h > 4) band.moved = true
+  }
+  const onUp = () => {
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+    if (band.moved && fileGrid.value) {
+      const rect = { left: band.x, top: band.y, right: band.x + band.w, bottom: band.y + band.h }
+      const picked = []
+      fileGrid.value.querySelectorAll('.grid-card').forEach((el) => {
+        const r = el.getBoundingClientRect()
+        if (r.left < rect.right && r.right > rect.left && r.top < rect.bottom && r.bottom > rect.top) {
+          const item = sortedEntries.value.find((x) => x.path === el.dataset.path)
+          if (item) picked.push(item)
+        }
+      })
+      selection.value = picked
+      if (picked.length === 1) previewEntry.value = picked[0]
+    }
+    band.active = false
+  }
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+}
+function openQuicklook() {
+  if (selection.value.length === 1) previewEntry.value = selection.value[0]
+  if (previewEntry.value) quicklookOpen.value = true
 }
 
 function toggleRow(row, event) {
@@ -668,8 +920,15 @@ async function submitMove() {
   busy.value = true
   try {
     const payload = { paths: selection.value.map((e) => e.path), destination: moveTarget.value }
-    if (moveMode.value === 'move') await api.files.move(payload)
-    else await api.files.copy(payload)
+    const task = tasks.add(moveMode.value === 'move' ? t('files.move') : t('files.copy'), `${selection.value.length} → ${moveTarget.value}`)
+    try {
+      if (moveMode.value === 'move') await api.files.move(payload)
+      else await api.files.copy(payload)
+      tasks.finish(task)
+    } catch (taskError) {
+      tasks.finish(task, 'failed', errorMessage(taskError))
+      throw taskError
+    }
     ElMessage.success(t('common.operationSuccess'))
     moveOpen.value = false
     await load(currentPath.value)
@@ -696,7 +955,14 @@ async function deleteEntries(items) {
     return
   }
   try {
-    await api.files.remove({ paths: items.map((e) => e.path) })
+    const task = tasks.add(t('common.delete'), `${items.length} ${t('files.selected', { n: items.length })}`)
+    try {
+      await api.files.remove({ paths: items.map((e) => e.path) })
+      tasks.finish(task)
+    } catch (taskError) {
+      tasks.finish(task, 'failed', errorMessage(taskError))
+      throw taskError
+    }
     ElMessage.success(t('files.deleteSuccess') || t('common.deleteSuccess'))
     selection.value = []
     await load(currentPath.value)
@@ -853,7 +1119,21 @@ function closeContext() {
 }
 
 function onKeydown(event) {
-  if (event.key === 'Escape') closeContext()
+  if (event.key === 'Escape') {
+    closeContext()
+    quicklookOpen.value = false
+    return
+  }
+  if (event.code === 'Space') {
+    const tag = (event.target.tagName || '').toLowerCase()
+    const type = (event.target.type || '').toLowerCase()
+    if ((tag === 'input' || tag === 'textarea') && type !== 'checkbox' && type !== 'radio') return
+    if (event.target.isContentEditable) return
+    if (selection.value.length === 1 || previewEntry.value) {
+      event.preventDefault()
+      openQuicklook()
+    }
+  }
 }
 onMounted(() => {
   window.addEventListener('click', closeContext)
@@ -872,13 +1152,14 @@ onBeforeUnmount(() => {
 .files-layout {
   flex: 1;
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-columns: var(--files-sidebar-width, 248px) minmax(0, 1fr) var(--files-preview-width, 0px);
   gap: 0;
   min-height: 0;
   border: 1px solid var(--pos-border);
   background: var(--pos-panel);
 }
 .tree-panel {
+  position: relative;
   padding: 16px 12px;
   display: flex;
   flex-direction: column;
@@ -1007,6 +1288,7 @@ onBeforeUnmount(() => {
 }
 .name-link:hover { color: var(--pos-accent); }
 .grid-view {
+  position: relative;
   flex: 1;
   overflow: auto;
   display: grid;
@@ -1016,6 +1298,7 @@ onBeforeUnmount(() => {
   align-content: start;
   min-height: 0;
 }
+.rubber-band { position: fixed; z-index: 8800; border: 1px solid var(--pos-accent); background: color-mix(in srgb, var(--pos-accent) 12%, transparent); pointer-events: none; }
 .grid-card {
   border: 1px solid var(--pos-border);
   border-radius: 12px;
@@ -1072,7 +1355,7 @@ onBeforeUnmount(() => {
   min-width: 190px;
   background: var(--pos-panel);
   border: 1px solid var(--pos-border);
-  border-radius: 10px;
+  border-radius: 0;
   box-shadow: var(--pos-shadow);
   padding: 6px;
   display: flex;
@@ -1123,5 +1406,51 @@ onBeforeUnmount(() => {
   .tree-panel { display: none; }
   .content-panel { min-height: 70vh; min-width: 0; overflow: hidden; }
   .search { width: 150px; }
+}
+
+.preview-panel {
+  position: relative;
+  min-width: 0;
+  border-left: 1px solid var(--pos-border);
+  background: var(--pos-panel);
+  padding: 10px 12px;
+  overflow: auto;
+}
+.preview-panel-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 7px; margin-bottom: 8px; border-bottom: 1px solid var(--pos-border); }
+.preview-panel-head strong { font-size: 12px; }
+.preview-panel-head button { border: none; background: transparent; color: var(--pos-muted); cursor: pointer; }
+.column-view { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); border-top: 1px solid var(--pos-border); }
+.column-list { min-width: 0; overflow: auto; border-right: 1px solid var(--pos-border); padding: 6px; }
+.column-detail { min-width: 0; overflow: auto; padding: 10px; }
+.column-head { font-size: 12px; font-weight: 600; padding: 4px 6px 8px; border-bottom: 1px solid var(--pos-border); margin-bottom: 4px; }
+.column-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--pos-text);
+  font-size: 11.5px;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+.column-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.column-item:hover { background: var(--pos-panel-2); }
+.column-item.active { background: var(--pos-accent-soft); color: var(--pos-accent); }
+.quicklook { position: fixed; inset: 0; z-index: 8500; background: rgba(10, 16, 22, 0.55); display: flex; align-items: center; justify-content: center; }
+.quicklook-card { width: 720px; max-width: calc(100vw - 40px); max-height: calc(100vh - 60px); overflow: auto; background: var(--pos-panel); border: 1px solid var(--pos-border-strong); padding: 14px; box-shadow: 0 24px 70px rgba(0,0,0,.28); }
+.quicklook-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.quicklook-head button { border: none; background: transparent; color: var(--pos-muted); cursor: pointer; }
+.batch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.batch-preview { max-height: 180px; overflow: auto; border: 1px solid var(--pos-border); margin-top: 4px; }
+.batch-row { display: grid; grid-template-columns: minmax(0,1fr) 20px minmax(0,1fr); gap: 6px; padding: 5px 8px; border-bottom: 1px solid var(--pos-border); font-size: 11px; }
+.batch-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.batch-row strong { font-weight: 550; color: var(--pos-accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 960px) {
+  .preview-panel { display: none; }
 }
 </style>

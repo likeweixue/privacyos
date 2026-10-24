@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -21,7 +22,7 @@ import (
 var settingsKeys = map[string]bool{
 	"security": true, "destroy": true, "deletion": true, "tmdb": true,
 	"notifications": true, "network": true, "ddns": true, "system": true,
-	"normal": true, "https": true, "backup": true,
+	"normal": true, "https": true, "backup": true, "appearance": true,
 }
 
 // getSettings returns all settings with secrets masked.
@@ -115,6 +116,8 @@ func (s *Server) saveSetting(c *gin.Context, key string) {
 		target = &st.HTTPS
 	case "backup":
 		target = &st.Backup
+	case "appearance":
+		target = &st.Appearance
 	}
 	if err := mergeJSON(target, patch); err != nil {
 		apiError(c, http.StatusBadRequest, "bad_request", "参数格式不正确")
@@ -355,9 +358,9 @@ func (s *Server) firewallGet(c *gin.Context) {
 		return
 	}
 	ok(c, gin.H{
-		"status": s.System.FirewallStatus(c.Request.Context()),
+		"status":          s.System.FirewallStatus(c.Request.Context()),
 		"default_ruleset": s.System.RenderFirewall(nil),
-		"active": s.System.FirewallStatus(c.Request.Context()) != "",
+		"active":          s.System.FirewallStatus(c.Request.Context()) != "",
 	})
 }
 
@@ -601,4 +604,82 @@ func (s *Server) notificationTest(c *gin.Context) {
 	results := s.App.Notify.Send(c.Request.Context(), "PrivacyOS 测试通知",
 		"这是一条来自 PrivacyOS 的测试通知，如果你收到它，说明通知渠道配置正确。")
 	ok(c, results)
+}
+
+// wallpaperURL returns the public wallpaper URL when configured.
+func wallpaperURL(st core.Settings) string {
+	if st.Appearance.Wallpaper == "" {
+		return ""
+	}
+	return "/api/v1/system/wallpaper?v=" + url.QueryEscape(st.Appearance.Wallpaper)
+}
+
+// publicWallpaper serves the configured wallpaper without authentication.
+func (s *Server) publicWallpaper(c *gin.Context) {
+	st := s.App.LoadSettings()
+	name := filepath.Base(st.Appearance.Wallpaper)
+	if name == "." || name == "/" || name == "" {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	path := filepath.Join(s.Cfg.ConfigDir, name)
+	if _, err := os.Stat(path); err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	c.Header("Cache-Control", "public, max-age=3600")
+	http.ServeFile(c.Writer, c.Request, path)
+}
+
+// uploadWallpaper stores a custom wallpaper and optionally enables it on login.
+func (s *Server) uploadWallpaper(c *gin.Context) {
+	if !s.requireAdmin(c) {
+		return
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 25<<20)
+	file, err := c.FormFile("file")
+	if err != nil {
+		apiError(c, http.StatusBadRequest, "no_file", "请选择图片")
+		return
+	}
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
+		apiError(c, http.StatusBadRequest, "invalid_image", "仅支持 JPG / PNG / WebP")
+		return
+	}
+	name := "wallpaper" + ext
+	dst := filepath.Join(s.Cfg.ConfigDir, name)
+	if err := c.SaveUploadedFile(file, dst); err != nil {
+		apiError(c, http.StatusInternalServerError, "save_failed", "保存壁纸失败")
+		return
+	}
+	// Remove an old wallpaper with a different extension.
+	for _, other := range []string{"wallpaper.jpg", "wallpaper.jpeg", "wallpaper.png", "wallpaper.webp"} {
+		if other != name {
+			_ = os.Remove(filepath.Join(s.Cfg.ConfigDir, other))
+		}
+	}
+	st := s.App.LoadSettings()
+	st.Appearance.Wallpaper = name
+	st.Appearance.LoginWallpaper = c.PostForm("login_wallpaper") == "1"
+	if err := s.Store.SetSetting("appearance", st.Appearance); err != nil {
+		apiError(c, http.StatusInternalServerError, "save_failed", "保存设置失败")
+		return
+	}
+	ok(c, gin.H{"wallpaper_url": wallpaperURL(st), "appearance": st.Appearance})
+}
+
+// deleteWallpaper removes the custom wallpaper.
+func (s *Server) deleteWallpaper(c *gin.Context) {
+	if !s.requireAdmin(c) {
+		return
+	}
+	st := s.App.LoadSettings()
+	for _, name := range []string{"wallpaper.jpg", "wallpaper.jpeg", "wallpaper.png", "wallpaper.webp"} {
+		_ = os.Remove(filepath.Join(s.Cfg.ConfigDir, name))
+	}
+	st.Appearance.Wallpaper = ""
+	st.Appearance.LoginWallpaper = false
+	_ = s.Store.SetSetting("appearance", st.Appearance)
+	ok(c, gin.H{"appearance": st.Appearance})
 }
